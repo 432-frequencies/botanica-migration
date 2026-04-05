@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { base44 } from "@/api/base44Client";
 import { getUserProfile } from "@/api/getUserProfile";
 import { saveDiscovery } from "@/api/saveDiscovery";
 import { identifyPlant } from "@/api/identifyPlant";
 import { uploadPhoto } from "@/api/uploadPhoto";
-import { appParams } from "@/lib/app-params";
 import { createPageUrl } from "@/utils";
 import { Camera, User, Zap, Shield, WifiOff, Flame, MapPin } from "lucide-react";
 import CameraCapture from "@/components/identify/CameraCapture";
