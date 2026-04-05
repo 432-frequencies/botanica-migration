@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
 import { Compass, MapPin, Star, ChevronRight, Lock } from "lucide-react";
 import ConstellationModal from "@/components/astronomy/ConstellationModal";
 
@@ -145,28 +145,15 @@ export default function NightSky() {
   const loadData = async (loc) => {
     setLoading(true);
     try {
-      const user = await base44.auth.me();
-      const [all, prog] = await Promise.all([
-        base44.entities.Constellation.list(),
-        base44.entities.UserKnowledgeProgress.filter({ user_email: user.email }),
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const [allRes, progRes] = await Promise.all([
+        supabase.from('constellations').select('*'),
+        supabase.from('user_knowledge_progress').select('*').eq('user_email', user.email),
       ]);
-      setConstellations(all);
-      setUnlockedIds(new Set(prog.map((p) => p.knowledge_id)));
-
-      // Fetch real astronomy data if we have location
-      const usedLoc = loc || location;
-      if (usedLoc) {
-        try {
-          const astroRes = await base44.functions.invoke("getAstronomyData", {
-            latitude: usedLoc.lat,
-            longitude: usedLoc.lng,
-          });
-          setAstroBodies(astroRes.data?.bodies || {});
-          setActiveConstellations(new Set(astroRes.data?.activeConstellations || []));
-        } catch (e) {
-          console.warn("AstronomyAPI unavailable, using local filter", e.message);
-        }
-      }
+      setConstellations(allRes.data || []);
+      setUnlockedIds(new Set((progRes.data || []).map((p) => p.knowledge_id)));
+      // getAstronomyData : TODO migrer vers API route — stubbed pour l'instant
     } catch (e) {}
     setLoading(false);
   };

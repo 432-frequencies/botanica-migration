@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
 import { MapPin, Navigation } from "lucide-react";
 import KnowledgeDetailModal from "@/components/knowledge/KnowledgeDetailModal";
 
@@ -53,14 +53,15 @@ export default function KnowledgeMap() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const user = await base44.auth.me();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
       setUserEmail(user.email);
-      const [all, prog] = await Promise.all([
-        base44.entities.AncientKnowledge.filter({ is_active: true }),
-        base44.entities.UserKnowledgeProgress.filter({ user_email: user.email }),
+      const [allRes, progRes] = await Promise.all([
+        supabase.from('ancient_knowledge').select('*').eq('is_active', true),
+        supabase.from('user_knowledge_progress').select('*').eq('user_email', user.email),
       ]);
-      setKnowledge(all);
-      setDiscoveredIds(new Set(prog.map((p) => p.knowledge_id)));
+      setKnowledge(allRes.data || []);
+      setDiscoveredIds(new Set((progRes.data || []).map((p) => p.knowledge_id)));
     } catch (e) { console.error(e); }
     setLoading(false);
   };

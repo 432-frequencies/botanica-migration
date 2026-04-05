@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, CheckCircle } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
 import confetti from "canvas-confetti";
 
 const CATEGORIES = {
@@ -20,7 +20,7 @@ export default function KnowledgeDetailModal({ knowledge: k, isDiscovered, userE
   const handleDiscover = async () => {
     setLoading(true);
     try {
-      await base44.entities.UserKnowledgeProgress.create({
+      await supabase.from('user_knowledge_progress').insert({
         user_email: userEmail,
         knowledge_id: k.id,
         discovered_at: new Date().toISOString(),
