@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { base44 } from "@/api/base44Client";
 import { getUserProfile } from "@/api/getUserProfile";
+import { saveDiscovery } from "@/api/saveDiscovery";
 import { appParams } from "@/lib/app-params";
 import { createPageUrl } from "@/utils";
 import { Camera, User, Zap, Shield, WifiOff, Flame, MapPin } from "lucide-react";
@@ -180,7 +181,7 @@ export default function Home() {
         }
 
         const top = res.data.top_result;
-        await base44.functions.invoke("saveDiscovery", {
+        await saveDiscovery({
           ...top,
           category: res.data.category || "plant",
           photo_url: item.imageBase64,
@@ -428,45 +429,32 @@ export default function Home() {
       }
 
       console.log("[SCAN][Home] saveDiscovery start");
-      const saveRes = await base44.functions.invoke("saveDiscovery", {
+      const saveRes = await saveDiscovery({
         category: savedResult.category || "plant",
         common_name: top.common_name,
         scientific_name: top.scientific_name,
-        family: top.family,
         photo_url: photoUrl,
-        thumbnail_url: photoUrl,
-        rarity: top.rarity,
-        is_edible: top.is_edible,
-        is_toxic: top.is_toxic,
-        is_cannabis: top.is_cannabis,
-        strain_type: top.strain_type,
-        description: top.description,
-        edibility_details: top.edibility_details,
-        medicinal_uses: top.medicinal_uses,
-        anecdote: top.anecdote,
-        habitat: top.habitat,
-        behavior: top.behavior,
         latitude: lat,
         longitude: lng,
         confidence: top.confidence,
       });
 
-      if (saveRes.data?.error) throw new Error(saveRes.data.error);
+      if (saveRes?.error) throw new Error(saveRes.error);
 
       // Succès — on ferme maintenant
       setResult(null);
       setCapturedImage(null);
       setSaving(false);
-      const xp = saveRes.data?.xp_earned || 10;
-      const lvl = saveRes.data?.level;
+      const xp = saveRes?.xp_earned || 10;
+      const lvl = saveRes?.level;
       const prevLvl = getCurrentLevel(snapshot?.profile?.total_points || 0)?.level;
       const levelUp = lvl && prevLvl && lvl > prevLvl;
       setToast(levelUp
         ? `⬆ LEVEL UP — LVL ${lvl}! +${xp} XP`
         : `+${xp} XP — ${top.common_name} ajouté.`
       );
-      if (saveRes.data?.new_achievements?.length > 0) {
-        setAchievementQueue(saveRes.data.new_achievements);
+      if (saveRes?.new_achievements?.length > 0) {
+        setAchievementQueue(saveRes.new_achievements);
       }
       loadUserData();
 
