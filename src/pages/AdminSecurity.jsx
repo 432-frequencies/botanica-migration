@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { AlertTriangle, Shield, CheckCircle, X, RotateCcw } from 'lucide-react';
 
 export default function AdminSecurity() {
@@ -10,17 +10,15 @@ export default function AdminSecurity() {
   useEffect(() => {
     const fetchSuspects = async () => {
       try {
-        const user = await base44.auth.me();
-        if (user?.role !== 'admin') {
-          setSuspects([]);
-          setLoading(false);
-          return;
-        }
+        const { data: { user } } = await supabase.auth.getUser();
+        // Note: vérification du rôle admin à implémenter via Supabase custom claims
+        if (!user) { setSuspects([]); setLoading(false); return; }
 
-        const trustScores = await base44.entities.UserTrustScore.list(
-          '-trust_score',
-          100
-        );
+        const { data: trustScores } = await supabase
+          .from('user_trust_scores')
+          .select('*')
+          .order('trust_score', { ascending: true })
+          .limit(100);
 
         const filtered = trustScores.filter(ts => {
           if (filter === 'all') return true;
@@ -43,24 +41,24 @@ export default function AdminSecurity() {
 
   const handleBlockUser = async (trustId) => {
     try {
-      await base44.entities.UserTrustScore.update(trustId, {
+      await supabase.from('user_trust_scores').update({
         trust_score: 0,
         blocked_until: new Date(Date.now() + 86400000).toISOString(),
-      });
+      }).eq('id', trustId);
       setSuspects(s => s.map(su => su.id === trustId ? { ...su, trust_score: 0 } : su));
     } catch (error) {
       console.error('Error blocking user:', error);
     }
   };
 
-  const handleResetScore = async (trustId, userEmail) => {
+  const handleResetScore = async (trustId) => {
     try {
-      await base44.entities.UserTrustScore.update(trustId, {
+      await supabase.from('user_trust_scores').update({
         trust_score: 100,
         violations: { speed_anomalies: 0, spam_incidents: 0, farming_attempts: 0, suspicious_patterns: 0 },
         surveillance_active: false,
         blocked_until: null,
-      });
+      }).eq('id', trustId);
       setSuspects(s => s.map(su => su.id === trustId ? { ...su, trust_score: 100, violations: { speed_anomalies: 0, spam_incidents: 0, farming_attempts: 0, suspicious_patterns: 0 }, surveillance_active: false } : su));
     } catch (error) {
       console.error('Error resetting score:', error);

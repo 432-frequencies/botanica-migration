@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
 import { Sun, Moon, Leaf, ChevronRight } from "lucide-react";
 
 const MOON_PHASES = {
@@ -117,20 +117,17 @@ export default function AncientCalendar() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await base44.functions.invoke("getAncientCalendarData", { date: todayStr });
-      const data = res.data;
-      setLunarData(data.moon_phase || null);
-      const upcoming = (data.solar_events || []).filter((s) => s.date >= todayStr);
+      // TODO: migrer getAncientCalendarData vers une API route Vercel avec ephemeris
+      // Pour l'instant : requêtes directes Supabase (tables à peupler manuellement)
+      const [lunarRes, solarRes] = await Promise.all([
+        supabase.from('lunar_calendar').select('*').eq('date', todayStr).single(),
+        supabase.from('solar_events').select('*').order('date').limit(50),
+      ]);
+      setLunarData(lunarRes.data || null);
+      const upcoming = (solarRes.data || []).filter((s) => s.date >= todayStr);
       setNextSolar(upcoming[0] || null);
     } catch (e) {
-      // fallback to direct DB
-      const [lunar, solar] = await Promise.all([
-        base44.entities.LunarCalendar.filter({ date: todayStr }),
-        base44.entities.SolarEvent.list("date", 50),
-      ]);
-      setLunarData(lunar[0] || null);
-      const upcoming = solar.filter((s) => s.date >= todayStr).sort((a, b) => a.date.localeCompare(b.date));
-      setNextSolar(upcoming[0] || null);
+      console.warn('[AncientCalendar] data unavailable', e.message);
     }
     setLoading(false);
   };

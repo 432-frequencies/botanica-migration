@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Star } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
 import confetti from "canvas-confetti";
 
 const G = "#39FF14";
@@ -109,26 +109,16 @@ export default function ConstellationModal({ constellation: c, isUnlocked, onClo
 
   const fetchStarChart = async () => {
     setChartLoading(true);
-    try {
-      const res = await base44.functions.invoke("getConstellationChart", {
-        constellation_id: c.abbreviation?.toLowerCase(),
-        constellation_name: c.name_latin,
-        latitude: userLocation?.lat || 48.8566,
-        longitude: userLocation?.lng || 2.3522,
-        style: "navy",
-      });
-      if (res.data?.imageUrl) setChartUrl(res.data.imageUrl);
-    } catch (e) {
-      console.warn("Star chart unavailable", e.message);
-    }
+    // TODO: implémenter via Vercel API route /api/constellation-chart (AstronomyAPI)
+    // Paramètres : constellation_id, latitude, longitude, style
     setChartLoading(false);
   };
 
   const handleAddToKnowledge = async () => {
     setLoading(true);
     try {
-      const user = await base44.auth.me();
-      await base44.entities.UserKnowledgeProgress.create({
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from('user_knowledge_progress').insert({
         user_email: user.email,
         knowledge_id: c.id,
         discovered_at: new Date().toISOString(),

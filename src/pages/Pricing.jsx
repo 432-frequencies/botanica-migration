@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { createPageUrl } from "@/utils";
 import { Check, Crown, ArrowLeft, Zap, Star, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -35,14 +34,9 @@ export default function Pricing() {
       alert("Payment only works from the published app. Open the app in a new tab.");
       return;
     }
-    setLoading(true);
-    const res = await base44.functions.invoke("createCheckout", {
-      priceId: PRO_PRICE_ID,
-      successUrl: window.location.origin + createPageUrl("Home"),
-      cancelUrl: window.location.origin + createPageUrl("Pricing")
-    });
-    if (res.data?.url) window.location.href = res.data.url;
-    setLoading(false);
+    // TODO: créer /api/create-checkout.js (Vercel + stripe-node) avec priceId: PRO_PRICE_ID
+    // et rediriger vers res.data.url (Stripe Checkout session)
+    alert("Paiement non disponible pour l'instant.");
   };
 
   return (

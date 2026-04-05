@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
 import { X, Globe, Utensils, FlaskConical, Leaf, Sprout, AlertTriangle, Mountain, Bird, Shield, Lightbulb, ChevronDown } from "lucide-react";
 
 const SECTIONS = [
@@ -88,37 +87,21 @@ export default function LearnMoreModal({ plant, onClose }) {
     if (!plant) return;
     setData(null);
     setLoading(true);
-    const catLabel = { plant: "plante", tree: "arbre", bird: "oiseau", insect: "insecte", rock: "minéral/roche", fungus: "champignon" }[plant.category] || plant.category;
-    base44.integrations.Core.InvokeLLM({
-      prompt: `Tu es un naturaliste expert. Réponds UNIQUEMENT en JSON valide.
-Espèce : ${plant.common_name}${plant.scientific_name ? ` (${plant.scientific_name})` : ""}, catégorie : ${catLabel}
-is_edible: ${plant.is_edible}, is_toxic: ${plant.is_toxic}
-
-Génère un objet JSON avec ces champs (2-4 phrases chacun, en français) :
-- role_biodiversite
-- interactions
-${plant.is_edible ? "- bienfaits_comestibles\n- usages_medicinaux" : ""}
-${plant.is_toxic  ? "- danger_detail" : ""}
-${plant.category === "rock" ? "- formation_geologique\n- usages_humains" : ""}
-${plant.category === "bird" ? "- migration_nidification" : ""}
-- menaces_conservation
-- le_savais_tu`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          role_biodiversite:      { type: "string" },
-          interactions:           { type: "string" },
-          bienfaits_comestibles:  { type: "string" },
-          usages_medicinaux:      { type: "string" },
-          danger_detail:          { type: "string" },
-          formation_geologique:   { type: "string" },
-          usages_humains:         { type: "string" },
-          migration_nidification: { type: "string" },
-          menaces_conservation:   { type: "string" },
-          le_savais_tu:           { type: "string" },
-        }
-      }
-    }).then(res => { setData(res); setLoading(false); });
+    // TODO: connecter via /api/learn-more (Vercel + LLM) — retourne placeholder pour l'instant
+    const placeholder = {
+      role_biodiversite:     "Données non disponibles — LLM non connecté.",
+      interactions:          "Données non disponibles — LLM non connecté.",
+      bienfaits_comestibles: plant.is_edible ? "Données non disponibles — LLM non connecté." : undefined,
+      usages_medicinaux:     plant.is_edible ? "Données non disponibles — LLM non connecté." : undefined,
+      danger_detail:         plant.is_toxic  ? "Données non disponibles — LLM non connecté." : undefined,
+      formation_geologique:  plant.category === "rock" ? "Données non disponibles — LLM non connecté." : undefined,
+      usages_humains:        plant.category === "rock" ? "Données non disponibles — LLM non connecté." : undefined,
+      migration_nidification:plant.category === "bird" ? "Données non disponibles — LLM non connecté." : undefined,
+      menaces_conservation:  "Données non disponibles — LLM non connecté.",
+      le_savais_tu:          "Données non disponibles — LLM non connecté.",
+    };
+    setData(placeholder);
+    setLoading(false);
   }, [plant?.id]);
 
   if (!plant) return null;

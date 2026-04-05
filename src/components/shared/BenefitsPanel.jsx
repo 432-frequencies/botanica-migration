@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { Sparkles, Loader, ChevronDown } from "lucide-react";
 
 const G = "#2D7A1F";
@@ -19,22 +18,12 @@ export default function BenefitsPanel({ species, isOpen = false }) {
     if (benefits) { setOpen(!open); return; }
     setOpen(true);
     setLoading(true);
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `Tu es un expert naturaliste. Pour ${species.common_name}${species.scientific_name ? ` (${species.scientific_name})` : ""}, une espèce de ${catLabel}, fournis en français :
-1. Bienfaits principaux (pour la santé humaine si comestible/médicinal, ou rôle écologique/biodiversité)
-2. Utilisation traditionnelle ou culturelle (1-2 phrases)
-3. Anecdote ou fait insolite (1 phrase)
-Sois concis et captivant. Format JSON demandé.`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          bienfaits: { type: "array", items: { type: "string" } },
-          utilisation: { type: "string" },
-          anecdote: { type: "string" }
-        }
-      }
+    // TODO: connecter via /api/benefits (Vercel + LLM) — retourne placeholder pour l'instant
+    setBenefits({
+      bienfaits: ["Données non disponibles — LLM non connecté."],
+      utilisation: null,
+      anecdote: null,
     });
-    setBenefits(res);
     setLoading(false);
   };
 

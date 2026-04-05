@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
-import { appParams } from "@/lib/app-params";
+import { supabase } from "@/api/supabaseClient";
+import { uploadPhoto } from "@/api/uploadPhoto";
+import { identifyPlant } from "@/api/identifyPlant";
+import { saveDiscovery } from "@/api/saveDiscovery";
 import { Upload, Play, CheckCircle, XCircle, AlertCircle, Loader, Camera, RefreshCw, Trash2 } from "lucide-react";
 
 const G = "#39FF14";
@@ -19,23 +21,11 @@ function PhotoFixPanel() {
   const [log, setLog] = useState([]);
   const [stats, setStats] = useState(null);
 
-  const runBatch = async (offset = 0, accumulated = []) => {
-    const res = await base44.functions.invoke("fixSpeciesPhotos", {
-      batchSize: 20,
-      offset,
-      overwrite,
-    });
-    const data = res.data;
-    const newLog = [...accumulated, ...data.results];
-    setLog(newLog);
-    setStats({ updated: newLog.filter(r => r.status === 'updated').length, failed: newLog.filter(r => r.status === 'no_photo_found').length, total: newLog.length });
-
-    if (data.remaining > 0) {
-      await new Promise(r => setTimeout(r, 500));
-      await runBatch(data.nextOffset, newLog);
-    } else {
-      setRunning(false);
-    }
+  const runBatch = async () => {
+    // TODO: implémenter fixSpeciesPhotos via Vercel API route /api/fix-species-photos
+    setLog([{ status: 'skipped', name: 'fixSpeciesPhotos non implémenté — à connecter via /api/fix-species-photos' }]);
+    setStats({ updated: 0, failed: 0, total: 0 });
+    setRunning(false);
   };
 
   const handleStart = async () => {
@@ -140,8 +130,8 @@ function CsvImportPanel() {
     if (!csvContent.trim()) return;
     setLoading(true);
     setResults(null);
-    const res = await base44.functions.invoke("importSpeciesPhotos", { csvContent, dryRun });
-    setResults(res.data);
+    // TODO: implémenter importSpeciesPhotos via Vercel API route /api/import-species-photos
+    setResults({ updated: 0, notFound: 0, noPhoto: 0, results: [{ status: 'skipped', name: 'importSpeciesPhotos non implémenté' }] });
     setLoading(false);
   };
 
@@ -267,16 +257,20 @@ function ScanTestPanel() {
       { id: "save", label: "Étape 3 — Sauvegarde", status: STEP_IDLE, detail: null },
     ]);
 
-    // Étape 1 — Upload de la photo sélectionnée
+    // Étape 1 — Convertir File → data URI puis upload Supabase Storage
     setStep("image", STEP_RUNNING, null);
     let imageUrl;
     try {
       if (!selectedFile) throw new Error("Aucune photo sélectionnée — choisissez une image ci-dessus");
       setStep("image", STEP_RUNNING, `Upload de "${selectedFile.name}" (~${Math.round(selectedFile.size / 1024)} KB)…`);
-      const uploadRes = await base44.integrations.Core.UploadFile({ file: selectedFile });
-      console.log("[AdminTest] UploadFile response:", uploadRes);
-      imageUrl = uploadRes?.file_url;
-      if (!imageUrl) throw new Error(`Upload échoué: ${JSON.stringify(uploadRes)}`);
+      const dataUri = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(selectedFile);
+      });
+      imageUrl = await uploadPhoto(dataUri);
+      if (!imageUrl) throw new Error("Upload échoué — vérifier le bucket Supabase Storage");
       setStep("image", STEP_OK, `Image uploadée → ${imageUrl.substring(0, 60)}…`);
     } catch (e) {
       setStep("image", STEP_ERR, e.message);
@@ -284,17 +278,14 @@ function ScanTestPanel() {
       return;
     }
 
-    // Étape 2 — Identify avec l'URL publique
+    // Étape 2 — Identification
     setStep("identify", STEP_RUNNING, null);
     let identifyData;
     try {
-      const identifyRes = await base44.functions.invoke("identifyPlant", { imageBase64: imageUrl, isAdminTest: true });
-      console.log("[AdminTest] identifyPlant full res:", identifyRes);
-      console.log("[AdminTest] identifyPlant res.data:", JSON.stringify(identifyRes?.data));
-      identifyData = identifyRes?.data;
+      identifyData = await identifyPlant(imageUrl);
+      console.log("[AdminTest] identifyPlant result:", JSON.stringify(identifyData));
       if (identifyData?.error) {
-        const detail = `${identifyData.error}${identifyData.reason ? ` — ${identifyData.reason}` : ""} | raw: ${JSON.stringify(identifyData)}`;
-        setStep("identify", STEP_ERR, detail);
+        setStep("identify", STEP_ERR, `${identifyData.error} | raw: ${JSON.stringify(identifyData)}`);
         setRunning(false);
         return;
       }
@@ -312,75 +303,24 @@ function ScanTestPanel() {
       return;
     }
 
-    // Étape 3 — Save
+    // Étape 3 — Sauvegarde
     setStep("save", STEP_RUNNING, null);
     try {
       const top = identifyData.top_result;
-      let confidence = typeof top.confidence === "number" ? top.confidence : 0;
-      if (confidence > 100) confidence = confidence / 100;
-      if (confidence > 100) confidence = confidence % 100;
-      confidence = Math.round(Math.min(100, Math.max(0, confidence)));
-
-      const payload = {
+      const saveRes = await saveDiscovery({
         category: identifyData.category || "tree",
         common_name: top.common_name || "Espèce inconnue",
         scientific_name: top.scientific_name || "",
-        family: top.family || "",
-        rarity: top.rarity || "commune",
-        description: top.description || "",
-        edibility_details: top.edibility_details || "",
-        medicinal_uses: top.medicinal_uses || "",
-        anecdote: top.anecdote || "",
-        habitat: top.habitat || "",
-        behavior: top.behavior || "",
         photo_url: imageUrl,
-        thumbnail_url: imageUrl,
-        latitude: 48.8566,
-        longitude: 2.3522,
-        location_name: "Test — Paris",
-        confidence,
-        is_edible: top.is_edible === true,
-        is_toxic: top.is_toxic === true,
-        is_cannabis: top.is_cannabis === true,
-        strain_type: top.strain_type || "",
-      };
-      console.log("[AdminTest] saveDiscovery payload:", JSON.stringify(payload));
-
-      // Fetch natif pour voir le body brut de la réponse (diagnostic)
-      const { appId, token, appBaseUrl } = appParams;
-      const baseUrl = appBaseUrl || "https://base44.app";
-      const url = `${baseUrl}/api/apps/${appId}/functions/saveDiscovery`;
-      console.log("[AdminTest] fetch url:", url);
-
-      const fetchRes = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
       });
-
-      const rawBody = await fetchRes.text();
-      console.log("[AdminTest] saveDiscovery raw status:", fetchRes.status);
-      console.log("[AdminTest] saveDiscovery raw body:", rawBody);
-
-      if (!fetchRes.ok) {
-        setStep("save", STEP_ERR, `HTTP ${fetchRes.status} — ${rawBody}`);
+      console.log("[AdminTest] saveDiscovery result:", JSON.stringify(saveRes));
+      if (saveRes?.error) {
+        setStep("save", STEP_ERR, saveRes.error);
         setRunning(false);
         return;
       }
-
-      const saveData = JSON.parse(rawBody);
-      if (saveData?.error) {
-        setStep("save", STEP_ERR, `${saveData.error} | raw: ${rawBody}`);
-        setRunning(false);
-        return;
-      }
-      const xp = saveData?.xp_earned || 10;
-      const id = saveData?.discovery_id || saveData?.id;
-      setDiscoveryId(id);
-      setStep("save", STEP_OK, `Sauvegarde — +${xp} XP · Discovery ID: ${id || "n/a"}`);
+      const xp = saveRes?.xp_earned || 10;
+      setStep("save", STEP_OK, `Sauvegarde — +${xp} XP · nouvelle espèce: ${saveRes?.is_new_species ? "oui" : "non"}`);
     } catch (e) {
       console.error("[AdminTest] saveDiscovery exception:", e);
       setStep("save", STEP_ERR, `Exception: ${e.message}`);
@@ -392,7 +332,7 @@ function ScanTestPanel() {
   const handleClean = async () => {
     if (!discoveryId) return;
     setCleaning(true);
-    await base44.entities.PlantDiscovery.delete(discoveryId);
+    await supabase.from('plant_discoveries').delete().eq('id', discoveryId);
     setDiscoveryId(null);
     setCleaning(false);
   };
