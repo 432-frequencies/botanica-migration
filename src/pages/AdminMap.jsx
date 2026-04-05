@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
 import { ChevronLeft, ZoomIn, ZoomOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -26,7 +26,7 @@ export default function AdminMap() {
 
   useEffect(() => {
     const loadZones = async () => {
-      const leaders = await base44.entities.ZoneLeader.list();
+      const { data: leaders } = await supabase.from('zone_leaders').select('*');
       const zoneMap = {};
       
       leaders.forEach((z) => {

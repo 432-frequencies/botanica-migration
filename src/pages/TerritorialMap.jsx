@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
 import { Crown, RefreshCw, MapPin } from "lucide-react";
 import ZoneDetailPanel from "@/components/map/ZoneDetailPanel";
 import ConquestVictoryModal from "@/components/map/ConquestVictoryModal";
@@ -106,15 +106,15 @@ export default function TerritorialMap() {
 
   const loadData = async () => {
     setLoading(true);
-    const user = await base44.auth.me();
+    const { data: { user } } = await supabase.auth.getUser();
     setUserEmail(user?.email);
-    if (user?.full_name) setUserDisplayName(user.full_name);
+    if (user?.user_metadata?.full_name) setUserDisplayName(user.user_metadata.full_name);
 
     // Load zone leaders for surrounding area
     const zoneIds = getSurroundingZoneIds(userLocation.lat, userLocation.lng, GRID_RADIUS);
-    const allLeaders = await base44.entities.ZoneLeader.list("-species_count", 500);
+    const { data: allLeaders } = await supabase.from('zone_leaders').select('*').order('species_count', { ascending: false }).limit(500);
     const leaderMap = {};
-    for (const l of allLeaders) {
+    for (const l of (allLeaders || [])) {
       if (zoneIds.includes(l.zone_id)) leaderMap[l.zone_id] = l;
     }
     // Detect lost zones & newly conquered zones
@@ -134,7 +134,7 @@ export default function TerritorialMap() {
     // Load user discoveries to compute scores locally
     let newScores = {};
     if (user) {
-      const discoveries = await base44.entities.PlantDiscovery.filter({ user_email: user.email });
+      const { data: discoveries } = await supabase.from('plant_discoveries').select('*').eq('user_email', user.email);
       newScores = computeUserZoneScores(discoveries);
       setUserScores(newScores);
 
@@ -175,9 +175,30 @@ export default function TerritorialMap() {
   const handleSync = async () => {
     setSyncing(true);
     setSyncMsg(null);
-    const res = await base44.functions.invoke("updateZoneLeaders", {});
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const displayName = user.user_metadata?.full_name || user.email.split('@')[0];
+      const { data: discoveries } = await supabase.from('plant_discoveries').select('*').eq('user_email', user.email);
+      // Recompute zone scores from discoveries
+      const zoneMap = {};
+      for (const d of (discoveries || [])) {
+        if (!d.latitude || !d.longitude || !d.common_name) continue;
+        const zid = `${Math.floor(d.latitude / ZONE_DEG)}_${Math.floor(d.longitude / ZONE_DEG)}`;
+        if (!zoneMap[zid]) zoneMap[zid] = new Set();
+        zoneMap[zid].add(d.common_name.toLowerCase());
+      }
+      for (const [zone_id, speciesSet] of Object.entries(zoneMap)) {
+        await supabase.from('zone_leaders').upsert({
+          zone_id, user_email: user.email, display_name: displayName,
+          species_count: speciesSet.size, last_updated: new Date().toISOString(),
+        }, { onConflict: 'zone_id' });
+      }
+      setSyncMsg(`${Object.keys(zoneMap).length} zones mises à jour`);
+    } catch (e) {
+      console.error('[handleSync]', e.message);
+    }
     setSyncing(false);
-    setSyncMsg(`${res.data?.zones_computed || 0} zones mises à jour`);
     await loadData();
     setTimeout(() => setSyncMsg(null), 3000);
   };
