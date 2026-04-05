@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
 import { User, UserPlus, Check, X, Search, Users } from "lucide-react";
 
 const G = "#2D7A1F";
@@ -24,29 +24,30 @@ export default function Friends() {
 
   const load = async () => {
     setLoading(true);
-    const me = await base44.auth.me();
-    setUser(me);
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
+    setUser({ email: authUser.email, full_name: authUser.user_metadata?.full_name });
 
-    const [inc, snt, recvAccepted, sentAccepted] = await Promise.all([
-      base44.entities.FriendRequest.filter({ receiver_email: me.email, status: "pending" }),
-      base44.entities.FriendRequest.filter({ sender_email: me.email, status: "pending" }),
-      base44.entities.FriendRequest.filter({ receiver_email: me.email, status: "accepted" }),
-      base44.entities.FriendRequest.filter({ sender_email: me.email, status: "accepted" }),
+    const [incRes, sntRes, recvRes, sentRes] = await Promise.all([
+      supabase.from('friend_requests').select('*').eq('receiver_email', authUser.email).eq('status', 'pending'),
+      supabase.from('friend_requests').select('*').eq('sender_email', authUser.email).eq('status', 'pending'),
+      supabase.from('friend_requests').select('*').eq('receiver_email', authUser.email).eq('status', 'accepted'),
+      supabase.from('friend_requests').select('*').eq('sender_email', authUser.email).eq('status', 'accepted'),
     ]);
 
-    setIncoming(inc);
-    setSent(snt);
+    setIncoming(incRes.data || []);
+    setSent(sntRes.data || []);
 
     const allFriends = [];
-    for (const r of recvAccepted) allFriends.push({ email: r.sender_email, name: r.sender_name || r.sender_email.split("@")[0] });
-    for (const r of sentAccepted) allFriends.push({ email: r.receiver_email, name: r.receiver_name || r.receiver_email.split("@")[0] });
+    for (const r of (recvRes.data || [])) allFriends.push({ email: r.sender_email, name: r.sender_name || r.sender_email.split("@")[0] });
+    for (const r of (sentRes.data || [])) allFriends.push({ email: r.receiver_email, name: r.receiver_name || r.receiver_email.split("@")[0] });
     setFriends(allFriends);
 
     if (allFriends.length > 0) {
       const profiles = {};
       await Promise.all(allFriends.map(async (f) => {
-        const lb = await base44.entities.Leaderboard.filter({ user_email: f.email });
-        if (lb.length > 0) profiles[f.email] = lb[0];
+        const { data } = await supabase.from('user_profiles').select('*').eq('user_email', f.email).single();
+        if (data) profiles[f.email] = data;
       }));
       setFriendProfiles(profiles);
     }
@@ -64,12 +65,12 @@ export default function Friends() {
         ...incoming.map(i => i.sender_email),
         user.email,
       ]);
-      const users = await base44.entities.User.filter(
-        { full_name: { $regex: query, $options: "i" } },
-        null,
-        50
-      );
-      const filtered = users.filter(u => !friendEmailSet.has(u.email));
+      // TODO: recherche utilisateurs par nom — nécessite une table publique `public_profiles`
+      // Pour l'instant : recherche par email exact uniquement
+      const { data } = await supabase.from('user_profiles').select('user_email').eq('user_email', query.trim()).limit(10);
+      const filtered = (data || [])
+        .map(u => ({ email: u.user_email, full_name: u.user_email.split('@')[0] }))
+        .filter(u => !friendEmailSet.has(u.email));
       setResults(filtered);
     } catch (e) { console.error(e); }
     setSearching(false);
@@ -88,7 +89,7 @@ export default function Friends() {
     setQuery("");
     showToast(`Request sent to ${target.full_name || target.email.split("@")[0]}!`);
     try {
-      await base44.entities.FriendRequest.create({
+      await supabase.from('friend_requests').insert({
         sender_email: user.email,
         sender_name: user.full_name || user.email.split("@")[0],
         receiver_email: target.email,
@@ -108,7 +109,7 @@ export default function Friends() {
     setFriends(prev => [...prev, newFriend]);
     showToast("Friend added!");
     try {
-      await base44.entities.FriendRequest.update(req.id, { status: "accepted" });
+      await supabase.from('friend_requests').update({ status: "accepted" }).eq('id', req.id);
       load();
     } catch {
       setIncoming(prev => [...prev, req]);
@@ -120,7 +121,7 @@ export default function Friends() {
   const declineRequest = async (req) => {
     setIncoming(prev => prev.filter(r => r.id !== req.id));
     try {
-      await base44.entities.FriendRequest.update(req.id, { status: "declined" });
+      await supabase.from('friend_requests').update({ status: "declined" }).eq('id', req.id);
     } catch {
       setIncoming(prev => [...prev, req]);
     }

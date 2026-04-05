@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
 import { Trophy, Globe, MapPin, Map, Users, WifiOff } from "lucide-react";
 import { useIsActivePage } from "@/lib/ActivePageContext";
 
@@ -131,19 +131,21 @@ export default function Leaderboard() {
   const loadData = async () => {
     setLoading(true);
     setLoadError(false);
-    const user = await base44.auth.me();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
     setMyEmail(user.email);
     try {
-      const [data, recvAccepted, sentAccepted] = await Promise.all([
-        base44.entities.Leaderboard.list("-total_plants", 200),
-        base44.entities.FriendRequest.filter({ receiver_email: user.email, status: "accepted" }),
-        base44.entities.FriendRequest.filter({ sender_email: user.email, status: "accepted" }),
+      const [profilesRes, recvRes, sentRes] = await Promise.all([
+        supabase.from('user_profiles').select('*').order('total_plants', { ascending: false }).limit(200),
+        supabase.from('friend_requests').select('*').eq('receiver_email', user.email).eq('status', 'accepted'),
+        supabase.from('friend_requests').select('*').eq('sender_email', user.email).eq('status', 'accepted'),
       ]);
+      const data = profilesRes.data || [];
       setAllEntries(data);
       setMyEntry(data.find(e => e.user_email === user.email) || null);
       const emails = [
-        ...recvAccepted.map(r => r.sender_email),
-        ...sentAccepted.map(r => r.receiver_email),
+        ...(recvRes.data || []).map(r => r.sender_email),
+        ...(sentRes.data || []).map(r => r.receiver_email),
       ];
       setFriendEmails(emails);
     } catch (e) {
