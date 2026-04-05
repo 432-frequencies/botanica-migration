@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { base44 } from "@/api/base44Client";
 import { getUserProfile } from "@/api/getUserProfile";
 import { saveDiscovery } from "@/api/saveDiscovery";
+import { identifyPlant } from "@/api/identifyPlant";
 import { appParams } from "@/lib/app-params";
 import { createPageUrl } from "@/utils";
 import { Camera, User, Zap, Shield, WifiOff, Flame, MapPin } from "lucide-react";
@@ -172,7 +173,7 @@ export default function Home() {
       try {
         await updateQueueItem(item.id, { status: "processing", attempts: (item.attempts || 0) + 1 });
 
-        const res = await base44.functions.invoke("identifyPlant", { imageBase64: item.imageBase64 });
+        const res = { data: await identifyPlant({ imageBase64: item.imageBase64 }) };
 
         if (res.data?.error || !res.data?.top_result) {
           const attempts = (item.attempts || 0) + 1;
@@ -303,26 +304,7 @@ export default function Home() {
     if (cleanBase64.length > 2000000) console.warn("[SCAN] WARNING image très lourde:", Math.round(cleanBase64.length * 0.75 / 1024), "KB");
     let res;
     try {
-      const { appId, token, appBaseUrl } = appParams;
-      const baseUrl = appBaseUrl || "https://base44.app";
-      const url = `${baseUrl}/api/apps/${appId}/functions/identifyPlant`;
-      console.log("[SCAN][Home] fetch →", url);
-      const fetchRes = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ imageBase64: cleanBase64 }),
-      });
-      if (!fetchRes.ok) {
-        const errText = await fetchRes.text().catch(() => "");
-        console.error("[SCAN][Home] identifyPlant HTTP error:", fetchRes.status, errText);
-        const e = new Error(`HTTP ${fetchRes.status}`);
-        e.status = fetchRes.status;
-        throw e;
-      }
-      const data = await fetchRes.json();
+      const data = await identifyPlant({ imageBase64: cleanBase64 });
       res = { data };
     } catch (err) {
       clearTimers();
