@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
 import { BADGES, BADGE_CATEGORIES, computeStats } from "@/utils/badges";
 import { MapPin, Crown, Trophy, Leaf } from "lucide-react";
 import SeasonCard from "@/components/profile/SeasonCard";
@@ -71,8 +71,8 @@ function ZoneSection({ userEmail }) {
 
   useEffect(() => {
     if (!userEmail) return;
-    base44.entities.ZoneLeader.filter({ user_email: userEmail })
-      .then(data => { setZones(data); setLoading(false); })
+    supabase.from('zone_leaders').select('*').eq('user_email', userEmail)
+      .then(({ data }) => { setZones(data || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [userEmail]);
 
@@ -125,17 +125,17 @@ export default function Badges() {
   const [activeSeason, setActiveSeason] = useState(null);
 
   useEffect(() => {
-    base44.auth.me().then(user => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
       setUserEmail(user.email);
       Promise.all([
-        base44.entities.PlantDiscovery.filter({ user_email: user.email }),
-        base44.entities.UserProfile.filter({ user_email: user.email }),
-        base44.entities.Season.filter({ is_active: true }),
-      ]).then(([disc, profiles, seasons]) => {
-        setDiscoveries(disc || []);
-        setUserProfile(profiles?.[0] || null);
-        setActiveSeason(seasons?.[0] || null);
+        supabase.from('plant_discoveries').select('*').eq('user_email', user.email),
+        supabase.from('user_profiles').select('*').eq('user_email', user.email).single(),
+        supabase.from('seasons').select('*').eq('is_active', true).limit(1),
+      ]).then(([discRes, profileRes, seasonRes]) => {
+        setDiscoveries(discRes.data || []);
+        setUserProfile(profileRes.data || null);
+        setActiveSeason(seasonRes.data?.[0] || null);
         setLoading(false);
       });
     });

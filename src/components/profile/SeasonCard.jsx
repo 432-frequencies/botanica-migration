@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
 import { Calendar, Leaf, History } from "lucide-react";
 
 const G = "var(--v1v-green)";
@@ -30,11 +30,11 @@ export default function SeasonCard({ userEmail, discoveries }) {
   useEffect(() => {
     if (!userEmail) return;
     Promise.all([
-      base44.entities.Season.filter({ is_active: true }),
-      base44.entities.SeasonHistory.filter({ user_email: userEmail }, "-created_date", 10),
-    ]).then(([seasons, hist]) => {
-      setSeason(seasons[0] || null);
-      setHistory(hist || []);
+      supabase.from('seasons').select('*').eq('is_active', true).limit(1),
+      supabase.from('season_history').select('*').eq('user_email', userEmail).order('created_at', { ascending: false }).limit(10),
+    ]).then(([seasonRes, histRes]) => {
+      setSeason(seasonRes.data?.[0] || null);
+      setHistory(histRes.data || []);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [userEmail]);
