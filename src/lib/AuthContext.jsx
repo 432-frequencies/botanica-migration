@@ -9,7 +9,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         setUser({
           email: session.user.email,
@@ -17,6 +17,20 @@ export const AuthProvider = ({ children }) => {
           id: session.user.id,
         });
         setIsAuthenticated(true);
+      } else if (import.meta.env.DEV) {
+        // DEV ONLY — auto-login temporaire, à supprimer avant prod
+        const { data } = await supabase.auth.signInWithPassword({
+          email: 'test@test.com',
+          password: 'test1234',
+        });
+        if (data?.user) {
+          setUser({
+            email: data.user.email,
+            full_name: data.user.user_metadata?.full_name || data.user.email.split('@')[0],
+            id: data.user.id,
+          });
+          setIsAuthenticated(true);
+        }
       }
       setIsLoadingAuth(false);
     });
