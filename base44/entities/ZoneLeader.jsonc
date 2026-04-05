@@ -1,0 +1,27 @@
+{
+  "name": "ZoneLeader",
+  "type": "object",
+  "properties": {
+    "zone_id": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "species_count": {
+      "type": "number",
+      "default": 0
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "zone_id",
+    "user_email"
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "name": "SeasonHistory",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "season_id": {
+      "type": "string"
+    },
+    "season_name": {
+      "type": "string"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "unique_species": {
+      "type": "number",
+      "default": 0
+    },
+    "total_observations": {
+      "type": "number",
+      "default": 0
+    },
+    "zones_led": {
+      "type": "number",
+      "default": 0
+    },
+    "rank_label": {
+      "type": "string"
+    },
+    "title_earned": {
+      "type": "string"
+    },
+    "badge_earned": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_email",
+    "season_id",
+    "season_name"
+  ]
+}

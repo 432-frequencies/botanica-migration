@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* === Remapped to W1LD palette === */
+    --background: 128 30% 6%;       /* #0A140A */
+    --foreground: 100 20% 92%;      /* #E8F0E4 */
+    --card: 128 25% 9%;             /* #121E10 */
+    --card-foreground: 100 20% 92%;
+    --popover: 128 25% 9%;
+    --popover-foreground: 100 20% 92%;
+    --primary: 105 80% 40%;         /* #39B814 */
+    --primary-foreground: 128 30% 6%;
+    --secondary: 128 20% 13%;
+    --secondary-foreground: 100 20% 92%;
+    --muted: 128 20% 13%;
+    --muted-foreground: 100 10% 55%;
+    --accent: 128 20% 13%;
+    --accent-foreground: 100 20% 92%;
+    --destructive: 0 72% 53%;
+    --destructive-foreground: 100 20% 92%;
+    --border: 105 40% 18%;
+    --input: 105 40% 18%;
+    --ring: 105 80% 40%;
+    --radius: 0.5rem;
+    --chart-1: 105 80% 40%;
+    --chart-2: 43 95% 42%;
+    --chart-3: 220 60% 56%;
+    --chart-4: 280 55% 55%;
+    --chart-5: 0 72% 53%;
+    --sidebar-background: 128 30% 6%;
+    --sidebar-foreground: 100 20% 92%;
+    --sidebar-primary: 105 80% 40%;
+    --sidebar-primary-foreground: 128 30% 6%;
+    --sidebar-accent: 128 20% 13%;
+    --sidebar-accent-foreground: 100 20% 92%;
+    --sidebar-border: 105 40% 18%;
+    --sidebar-ring: 105 80% 40%;
+  }
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+}

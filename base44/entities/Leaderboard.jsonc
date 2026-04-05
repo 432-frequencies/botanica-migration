@@ -1,0 +1,87 @@
+{
+  "name": "Leaderboard",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "country": {
+      "type": "string"
+    },
+    "country_code": {
+      "type": "string"
+    },
+    "total_plants": {
+      "type": "number",
+      "default": 0
+    },
+    "weekly_plants": {
+      "type": "number",
+      "default": 0
+    },
+    "monthly_plants": {
+      "type": "number",
+      "default": 0
+    },
+    "plant_count": {
+      "type": "number",
+      "default": 0
+    },
+    "tree_count": {
+      "type": "number",
+      "default": 0
+    },
+    "bird_count": {
+      "type": "number",
+      "default": 0
+    },
+    "insect_count": {
+      "type": "number",
+      "default": 0
+    },
+    "rock_count": {
+      "type": "number",
+      "default": 0
+    },
+    "fungus_count": {
+      "type": "number",
+      "default": 0
+    },
+    "edible_count": {
+      "type": "number",
+      "default": 0
+    },
+    "toxic_count": {
+      "type": "number",
+      "default": 0
+    },
+    "forest_count": {
+      "type": "number",
+      "default": 0
+    },
+    "total_points": {
+      "type": "number",
+      "default": 0
+    },
+    "rank": {
+      "type": "string",
+      "default": "Scout"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "user_email"
+  ]
+}
