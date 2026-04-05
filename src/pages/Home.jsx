@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { base44 } from "@/api/base44Client";
+import { getUserProfile } from "@/api/getUserProfile";
 import { appParams } from "@/lib/app-params";
 import { createPageUrl } from "@/utils";
 import { Camera, User, Zap, Shield, WifiOff, Flame, MapPin } from "lucide-react";
@@ -215,29 +216,19 @@ export default function Home() {
   const loadUserData = async () => {
     setLoadError(false);
     try {
-      // Fetch auth first — if it fails, show error (auth is required)
-      let me;
-      try {
-        me = await base44.auth.me();
-      } catch (authErr) {
-        console.error("[Home] auth.me() failed:", authErr?.message || authErr);
-        setLoadError({ type: "auth", message: authErr?.message });
-        return;
-      }
-
-      // getUserProfile is secondary — don't crash entire page if it fails
+      // getUserProfile récupère auth + profil en une fois
       let profileData = null;
       try {
-        const profileRes = await base44.functions.invoke("getUserProfile", {});
-        profileData = profileRes.data;
+        profileData = await getUserProfile();
       } catch (profileErr) {
         console.error("[Home] getUserProfile failed:", profileErr?.message || profileErr);
+        if (profileErr?.message === 'Unauthorized') {
+          setLoadError({ type: "auth", message: "Non connecté" });
+          return;
+        }
         // Degrade gracefully — show page without profile data
-        profileData = { user: me, profile: null, achievements: [] };
+        profileData = { user: null, profile: null, achievements: [] };
       }
-
-      // Merge user into profileData
-      if (profileData && !profileData.user) profileData.user = me;
       setUserData(profileData);
 
       const localOnboardingDone = localStorage.getItem("onboarding_completed") === "1";
