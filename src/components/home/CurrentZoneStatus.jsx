@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
 
 const G = "#2EA80F";
 
@@ -18,11 +18,8 @@ export default function CurrentZoneStatus({ userEmail, lat, lng, userPlants }) {
       const gridLng = Math.floor((lng + 6) / (8 + 6) * 10);
       const zoneId = `${gridLat}_${gridLng}`;
 
-      const leaders = await base44.entities.ZoneLeader.filter({
-        zone_id: zoneId,
-      }, "-updated_date", 1);
-
-      setLeader(leaders?.[0] || null);
+      const { data } = await supabase.from('zone_leaders').select('*').eq('zone_id', zoneId).limit(1);
+      setLeader(data?.[0] || null);
       setLoading(false);
     };
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
 import { MapPin, Lock } from "lucide-react";
 
 const G = "var(--v1v-green)";
@@ -25,12 +25,13 @@ export default function LocalZoneWidget({ userEmail, geoCoords }) {
     setLoading(true);
     try {
       const zoneId = getZoneId(geoCoords.lat, geoCoords.lng);
-      const [leaderRes, discoveries] = await Promise.all([
-        base44.entities.ZoneLeader.filter({ zone_id: zoneId }, "-species_count", 1),
-        base44.entities.PlantDiscovery.filter({ user_email: userEmail }),
+      const [leaderRes, discoveriesRes] = await Promise.all([
+        supabase.from('zone_leaders').select('*').eq('zone_id', zoneId).order('species_count', { ascending: false }).limit(1),
+        supabase.from('plant_discoveries').select('*').eq('user_email', userEmail),
       ]);
 
-      const zoneLeader = leaderRes[0] || null;
+      const discoveries = discoveriesRes.data || [];
+      const zoneLeader = leaderRes.data?.[0] || null;
       setLeader(zoneLeader);
       setZone(zoneId);
 

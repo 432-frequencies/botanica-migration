@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
 import { Crown, MapPin, Zap, Target } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -60,9 +60,9 @@ export default function HomeMapWidget({ userEmail, userDisplayName }) {
 
   const loadZoneData = async () => {
     const zoneIds = getSurroundingZoneIds(location.lat, location.lng, RADIUS);
-    const allLeaders = await base44.entities.ZoneLeader.list("-species_count", 500);
+    const { data: allLeaders } = await supabase.from('zone_leaders').select('*').order('species_count', { ascending: false }).limit(500);
     const leaderMap = {};
-    for (const l of allLeaders) {
+    for (const l of (allLeaders || [])) {
       if (zoneIds.includes(l.zone_id)) leaderMap[l.zone_id] = l;
     }
 
@@ -75,7 +75,7 @@ export default function HomeMapWidget({ userEmail, userDisplayName }) {
     prevLeadersRef.current = leaderMap;
     setLeaders(leaderMap);
 
-    const discoveries = await base44.entities.PlantDiscovery.filter({ user_email: userEmail });
+    const { data: discoveries } = await supabase.from('plant_discoveries').select('*').eq('user_email', userEmail);
     const scores = computeUserZoneScores(discoveries);
     setUserScores(scores);
 

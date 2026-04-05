@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
 import { MapPin, Crown, Target } from "lucide-react";
 
 const G = "var(--v1v-blue)";
@@ -38,8 +38,8 @@ export default function ZoneCard({ userEmail, displayName, discoveries }) {
         .map(d => (d.common_name || "").toLowerCase())
     ).size;
 
-    const leaders = await base44.entities.ZoneLeader.filter({ zone_id });
-    const leader = leaders[0] || null;
+    const { data } = await supabase.from('zone_leaders').select('*').eq('zone_id', zone_id).limit(1);
+    const leader = data?.[0] || null;
 
     setZone({
       zone_id,
