@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
+import { getUserProfile } from "@/api/getUserProfile";
 import { createPageUrl } from "@/utils";
 import { LogOut, Zap, Shield, Star, ChevronRight, Trash2, Award, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -36,44 +37,38 @@ export default function Profile() {
   }, [isActive]);
 
   const loadData = async () => {
-    const me = await base44.auth.me();
-    setUser(me);
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) { setLoading(false); return; }
+    setUser({ email: authUser.email, full_name: authUser.user_metadata?.full_name });
 
-    const [profileRes, lbData, discoveries] = await Promise.allSettled([
-      base44.functions.invoke("getUserProfile", {}),
-      base44.entities.Leaderboard.filter({ user_email: me.email }),
-      base44.entities.PlantDiscovery.filter({ user_email: me.email }, "-created_date", 500),
+    const [profileRes, discoveries] = await Promise.allSettled([
+      getUserProfile(),
+      supabase.from('plant_discoveries').select('*').eq('user_email', authUser.email).order('created_at', { ascending: false }).limit(500),
     ]);
 
-    if (profileRes.status === "fulfilled") setUserData(profileRes.value.data);
-    if (lbData.status === "fulfilled" && lbData.value.length > 0) {
-      const lb = lbData.value[0];
-      setSpecialtyStats({ edible: lb.edible_count || 0, toxic: lb.toxic_count || 0, forest: lb.forest_count || 0 });
-    }
-    if (discoveries.status === "fulfilled") setUserDiscoveries(discoveries.value);
+    if (profileRes.status === "fulfilled") setUserData(profileRes.value);
+    // Leaderboard (specialtyStats) — non migré, stub vide pour l'instant
+    setSpecialtyStats(null);
+    if (discoveries.status === "fulfilled") setUserDiscoveries(discoveries.value.data || []);
     setLoading(false);
   };
 
-  const handleLogout = () => base44.auth.logout();
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
 
   const handleDeleteAccount = async () => {
     setDeleting(true);
-    // Delete all user data
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
+    // Supprime les données utilisateur
     await Promise.allSettled([
-      base44.entities.PlantDiscovery.filter({ user_email: user.email }).then(items =>
-        Promise.all(items.map(i => base44.entities.PlantDiscovery.delete(i.id)))
-      ),
-      base44.entities.Achievement.filter({ user_email: user.email }).then(items =>
-        Promise.all(items.map(i => base44.entities.Achievement.delete(i.id)))
-      ),
-      base44.entities.UserProfile.filter({ user_email: user.email }).then(items =>
-        Promise.all(items.map(i => base44.entities.UserProfile.delete(i.id)))
-      ),
-      base44.entities.Leaderboard.filter({ user_email: user.email }).then(items =>
-        Promise.all(items.map(i => base44.entities.Leaderboard.delete(i.id)))
-      ),
+      supabase.from('plant_discoveries').delete().eq('user_email', authUser.email),
+      supabase.from('user_profiles').delete().eq('user_email', authUser.email),
     ]);
-    base44.auth.logout();
+    await supabase.auth.signOut();
+    window.location.href = '/login';
   };
 
   if (loading) return (

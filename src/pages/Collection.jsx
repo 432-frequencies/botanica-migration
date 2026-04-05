@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
+import { getUserProfile } from "@/api/getUserProfile";
 import { Search, Database, Leaf, WifiOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -87,7 +88,8 @@ export default function Collection() {
   // ── Load data ──────────────────────────────────────────────────────────────
   const loadData = async (background = false) => {
     if (!background) setLoadError(false);
-    const user = await base44.auth.me();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoadError(true); setDataLoaded(true); return; }
     userEmailRef.current = user.email;
 
     // Serve cache instantly on first mount
@@ -99,17 +101,17 @@ export default function Collection() {
 
     try {
       const [discoveryData, profileResult] = await Promise.allSettled([
-        base44.entities.PlantDiscovery.filter({ user_email: user.email }, "-created_date"),
-        base44.functions.invoke("getUserProfile", {}),
+        supabase.from('plant_discoveries').select('*').eq('user_email', user.email).order('created_at', { ascending: false }),
+        getUserProfile(),
       ]);
 
-      const all = discoveryData.status === "fulfilled" ? discoveryData.value : [];
+      const all = discoveryData.status === "fulfilled" ? (discoveryData.value.data || []) : [];
       if (discoveryData.status === "rejected" && !collectionsCache.has(user.email)) {
         setLoadError(true); setDataLoaded(true); return;
       }
       collectionsCache.set(user.email, all);
       setAllPlants(all);
-      setIsPro(profileResult.status === "fulfilled" ? (profileResult.value.data?.profile?.is_pro || false) : false);
+      setIsPro(profileResult.status === "fulfilled" ? (profileResult.value?.profile?.is_pro || false) : false);
     } catch (e) {
       if (!collectionsCache.has(user.email)) { setLoadError(true); setDataLoaded(true); return; }
     }
