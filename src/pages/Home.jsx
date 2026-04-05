@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { getUserProfile } from "@/api/getUserProfile";
 import { saveDiscovery } from "@/api/saveDiscovery";
 import { identifyPlant } from "@/api/identifyPlant";
+import { uploadPhoto } from "@/api/uploadPhoto";
 import { appParams } from "@/lib/app-params";
 import { createPageUrl } from "@/utils";
 import { Camera, User, Zap, Shield, WifiOff, Flame, MapPin } from "lucide-react";
@@ -397,10 +398,7 @@ export default function Home() {
       try {
         console.log("[SCAN][Home] UploadFile start");
         const dataUri = savedImage.startsWith("data:") ? savedImage : `data:image/jpeg;base64,${savedImage}`;
-        const blob = await fetch(dataUri).then(r => r.blob());
-        const file = new File([blob], "plant.jpg", { type: "image/jpeg" });
-        const uploaded = await base44.integrations.Core.UploadFile({ file });
-        photoUrl = uploaded.file_url;
+        photoUrl = await uploadPhoto(dataUri);
         console.log("[SCAN][Home] UploadFile success:", photoUrl);
       } catch (e) {
         console.error("[SCAN][Home] UploadFile failed:", e?.message);
