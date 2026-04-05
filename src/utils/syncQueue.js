@@ -1,4 +1,5 @@
-import { base44 } from "@/api/base44Client";
+import { identifyPlant } from "@/api/identifyPlant";
+import { saveDiscovery } from "@/api/saveDiscovery";
 import { getPendingQueue, updateQueueItem, removeFromQueue } from "./offlineQueue";
 
 /**
@@ -13,17 +14,15 @@ export async function syncOfflineQueue() {
   for (const item of queue) {
     try {
       await updateQueueItem(item.id, { status: "processing", attempts: (item.attempts || 0) + 1 });
-      const res = await base44.functions.invoke("identifyPlant", { imageBase64: item.imageBase64 });
-      if (res.data?.error || !res.data?.top_result) {
+      const res = await identifyPlant({ imageBase64: item.imageBase64 });
+      if (res?.error || !res?.top_result) {
         await updateQueueItem(item.id, { status: "pending", attempts: (item.attempts || 0) + 1 });
         continue;
       }
-      const top = res.data.top_result;
-      await base44.functions.invoke("saveDiscovery", {
-        ...top,
-        category: res.data.category || "plant",
+      await saveDiscovery({
+        ...res.top_result,
+        category: res.category || "plant",
         photo_url: item.imageBase64,
-        thumbnail_url: item.imageBase64,
         latitude: item.latitude,
         longitude: item.longitude,
       });
