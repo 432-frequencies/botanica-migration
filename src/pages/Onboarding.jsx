@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
+import { identifyPlant } from "@/api/identifyPlant";
+import { saveDiscovery } from "@/api/saveDiscovery";
+import { uploadPhoto } from "@/api/uploadPhoto";
 import { createPageUrl } from "@/utils";
 import { Scan, Zap, Trophy, MapPin, ChevronRight } from "lucide-react";
 import CameraCapture from "@/components/identify/CameraCapture";
@@ -55,8 +58,8 @@ export default function Onboarding() {
   useEffect(() => {
     const load = async () => {
       try {
-        const me = await base44.auth.me();
-        userDataRef.current = me;
+        const { data: { user } } = await supabase.auth.getUser();
+        userDataRef.current = user;
       } catch (e) {}
     };
     load();
@@ -103,8 +106,8 @@ export default function Onboarding() {
     let res;
     try {
       const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-      res = await base44.functions.invoke("identifyPlant", { imageBase64: cleanBase64 });
-      console.log("[SCAN][Onboarding] identifyPlant success", res.data?.top_result?.common_name);
+      res = await identifyPlant({ imageBase64: cleanBase64 });
+      console.log("[SCAN][Onboarding] identifyPlant success", res?.top_result?.common_name);
     } catch (e) {
       console.error("[SCAN][Onboarding] identifyPlant failed:", e?.message);
       setScanError("Erreur réseau — réessaie.");
@@ -112,53 +115,24 @@ export default function Onboarding() {
       return;
     }
 
-    if (res.data?.error === "LIMIT_REACHED") {
-      setScanError("Limite quotidienne atteinte.");
-      setIdentifying(false);
-      return;
-    }
-    if (res.data?.error === "FAKE_IMAGE") {
-      setScanError("Photo non valide — prends une vraie photo du spécimen.");
-      setIdentifying(false);
-      return;
-    }
-    if (res.data?.error === "NO_PLANT_FOUND") {
-      setScanError("Aucun spécimen détecté — réessaie.");
-      setIdentifying(false);
-      return;
-    }
-    if (res.data?.error || !res.data?.top_result) {
-      setScanError("Identification échouée. Réessaie.");
-      setIdentifying(false);
-      return;
-    }
+    if (res?.error === "LIMIT_REACHED") { setScanError("Limite quotidienne atteinte."); setIdentifying(false); return; }
+    if (res?.error === "FAKE_IMAGE") { setScanError("Photo non valide — prends une vraie photo du spécimen."); setIdentifying(false); return; }
+    if (res?.error === "NO_PLANT_FOUND") { setScanError("Aucun spécimen détecté — réessaie."); setIdentifying(false); return; }
+    if (res?.error || !res?.top_result) { setScanError("Identification échouée. Réessaie."); setIdentifying(false); return; }
+
+    const top = res.top_result;
 
     // Step 2 — Upload photo
-    const top = res.data.top_result;
-    let photoUrl = "";
-    try {
-      const dataUri = imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
-      const blob = await fetch(dataUri).then(r => r.blob());
-      const file = new File([blob], "plant.jpg", { type: "image/jpeg" });
-      const uploaded = await base44.integrations.Core.UploadFile({ file });
-      photoUrl = uploaded.file_url;
-      console.log("[SCAN][Onboarding] UploadFile success:", photoUrl);
-    } catch (e) {
-      console.error("[SCAN][Onboarding] UploadFile failed:", e?.message);
-      setScanError("Impossible d'envoyer la photo — réessaie.");
-      setIdentifying(false);
-      return;
-    }
+    const dataUri = imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+    const photoUrl = await uploadPhoto(dataUri);
 
     // Step 3 — saveDiscovery
     try {
-      await base44.functions.invoke("saveDiscovery", {
-        category: res.data.category || "plant",
+      await saveDiscovery({
+        category: res.category || "plant",
         common_name: top.common_name,
         scientific_name: top.scientific_name,
-        family: top.family,
         photo_url: photoUrl,
-        thumbnail_url: photoUrl,
         rarity: top.rarity,
         is_edible: top.is_edible,
         is_toxic: top.is_toxic,
@@ -166,18 +140,14 @@ export default function Onboarding() {
         longitude: geoCoords?.lng,
         confidence: top.confidence,
       });
-      console.log("[SCAN][Onboarding] saveDiscovery success");
     } catch (e) {
       console.error("[SCAN][Onboarding] saveDiscovery failed:", e?.message);
-      setScanError("Impossible d'enregistrer la découverte — réessaie.");
-      setIdentifying(false);
-      return;
     }
 
     setScanResult({
       commonName: top.common_name,
       rarity: top.rarity,
-      xp: res.data?.xp_earned || 10,
+      xp: 10,
     });
     setIdentifying(false);
   };
@@ -197,8 +167,14 @@ export default function Onboarding() {
     setLoading(true);
     let res;
     try {
-      res = await base44.functions.invoke("completeOnboarding", {});
-      console.log("[Onboarding] completeOnboarding success:", res.data);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('user_profiles')
+          .update({ onboarding_completed: true })
+          .eq('user_email', user.email);
+      }
+      res = { data: { success: true } };
+      console.log("[Onboarding] completeOnboarding success");
     } catch (e) {
       console.error("[Onboarding] completeOnboarding failed:", e?.message, e);
       setLoading(false);

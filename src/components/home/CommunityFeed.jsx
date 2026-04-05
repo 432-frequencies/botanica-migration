@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/api/supabaseClient";
 import { Globe, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -80,12 +80,12 @@ export default function CommunityFeed({ userEmail }) {
 
   const fetchData = async (f) => {
     if (f === "community") {
-      const items = await base44.entities.PlantDiscovery.list("-created_date", 40);
-      return items.filter(d => d.user_email && d.user_email !== "system" && d.id);
+      const { data } = await supabase.from('plant_discoveries').select('*').order('created_at', { ascending: false }).limit(40);
+      return (data || []).filter(d => d.user_email && d.user_email !== "system");
     } else {
       if (!userEmail) return [];
-      const items = await base44.entities.PlantDiscovery.filter({ user_email: userEmail }, "-created_date", 20);
-      return items.filter(d => d.id);
+      const { data } = await supabase.from('plant_discoveries').select('*').eq('user_email', userEmail).order('created_at', { ascending: false }).limit(20);
+      return data || [];
     }
   };
 
