@@ -1,6 +1,10 @@
 #env
 .env
 .env.*
+env
+STRIPE_*
+*SECRET*
+*_KEY=*
 
 # Logs
 logs
@@ -28,3 +32,4 @@ dist-ssr
 *.sw?
 
 .env
+.vercel
