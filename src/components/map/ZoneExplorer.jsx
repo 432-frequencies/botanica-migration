@@ -209,6 +209,11 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
     return R * c * 1000; // Retourner en mètres
   };
 
+  // Filtrer les découvertes selon le mode (DOIT être déclaré AVANT sortedUserDiscoveries)
+  const filteredDiscoveries = showOnlyMyDiscoveries
+    ? userDiscoveries.filter(d => d.user_email === userEmail)
+    : userDiscoveries;
+
   // Trier les espèces par distance
   const sortedReferenceSpecies = [...referenceSpecies]
     .map(species => ({
@@ -223,11 +228,6 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
       distance: calculateDistance(centerLat, centerLng, discovery.latitude, discovery.longitude)
     }))
     .sort((a, b) => a.distance - b.distance);
-
-  // Filtrer les découvertes selon le mode
-  const filteredDiscoveries = showOnlyMyDiscoveries
-    ? userDiscoveries.filter(d => d.user_email === userEmail)
-    : userDiscoveries;
 
   // Stats filtrées
   const displayStats = showOnlyMyDiscoveries

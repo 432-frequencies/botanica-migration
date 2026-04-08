@@ -126,9 +126,15 @@ export default function Collection() {
   const isActive = useIsActivePage("Collection");
   const hasLoadedRef = useRef(null);
   useEffect(() => {
-    if (!isActive || hasLoadedRef.current) return;
-    hasLoadedRef.current = true;
-    loadData(false);
+    if (!isActive) return;
+    // First load: full load with cache check
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadData(false);
+    } else {
+      // Subsequent activations: background refresh to get new discoveries
+      loadData(true);
+    }
   }, [isActive]);
 
   // ── Filtered items ─────────────────────────────────────────────────────────

@@ -1,6 +1,5 @@
 import { createPortal } from "react-dom";
-import { X, MapPin, Calendar, Utensils, AlertTriangle, Lock, ChevronRight, Target, Share2 } from "lucide-react";
-import BenefitsPanel from "@/components/shared/BenefitsPanel";
+import { X, MapPin, Calendar, Utensils, AlertTriangle, Lock, Target, Share2 } from "lucide-react";
 import DiscoveryShareCard from "@/components/identify/DiscoveryShareCard";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -184,6 +183,38 @@ export default function PlantDetailModal({ plant, isPro, onClose, onLearnMore })
           {plant.habitat     && <InfoBlock label="Habitat">{plant.habitat}</InfoBlock>}
           {plant.behavior    && <InfoBlock label={plant.category === "rock" ? "Formation" : "Comportement"}>{plant.behavior}</InfoBlock>}
 
+          {/* ⭐ RÔLE ÉCOLOGIQUE - MIS EN AVANT (matching PlantResult hierarchy) */}
+          {plant.ecological_role && plant.ecological_role.trim().length > 0 && (
+            <div style={{
+              background: "var(--v1v-green-bg-subtle)",
+              border: "2px solid var(--v1v-green-ghost)",
+              borderRadius: "12px",
+              padding: "16px"
+            }}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">🌍</span>
+                <p className="text-[9px] font-black tracking-[0.4em] uppercase" style={{ color: "var(--v1v-green)" }}>Rôle Écologique</p>
+              </div>
+              <p className="text-sm leading-relaxed font-medium" style={{ color: "var(--v1v-fg)" }}>{plant.ecological_role}</p>
+            </div>
+          )}
+
+          {/* ⭐ IMPORTANCE BIODIVERSITÉ - MIS EN AVANT (matching PlantResult hierarchy) */}
+          {plant.biodiversity_importance && plant.biodiversity_importance.trim().length > 0 && (
+            <div style={{
+              background: "rgba(57,184,20,0.08)",
+              border: "2px solid rgba(57,184,20,0.25)",
+              borderRadius: "12px",
+              padding: "16px"
+            }}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">🦋</span>
+                <p className="text-[9px] font-black tracking-[0.4em] uppercase" style={{ color: "var(--v1v-green)" }}>Importance Biodiversité</p>
+              </div>
+              <p className="text-sm leading-relaxed font-medium" style={{ color: "var(--v1v-fg)" }}>{plant.biodiversity_importance}</p>
+            </div>
+          )}
+
           {/* Pro intel */}
           {isPro ? (
             <>
@@ -216,18 +247,6 @@ export default function PlantDetailModal({ plant, isPro, onClose, onLearnMore })
             <span className="text-[11px] font-black uppercase tracking-[0.3em]" style={{ color: "var(--v1v-green)" }}>Partager cette découverte</span>
             <Share2 className="w-4 h-4" style={{ color: "var(--v1v-green-faint)" }} />
           </button>
-
-          {/* En savoir plus button */}
-          <button
-            onClick={() => onLearnMore && onLearnMore(plant)}
-            className="flex items-center justify-between w-full px-4 py-3.5 transition-opacity active:opacity-60"
-            style={{ background: "var(--v1v-green-bg-subtle)", border: "1px solid var(--v1v-green-ghost)", borderRadius: 12 }}
-          >
-            <span className="text-[11px] font-black uppercase tracking-[0.3em]" style={{ color: "var(--v1v-green)" }}>Analyse complète — IA</span>
-            <ChevronRight className="w-4 h-4" style={{ color: "var(--v1v-green-faint)" }} />
-          </button>
-
-          <BenefitsPanel key={plant.id} species={plant} isOpen={true} />
         </div>
       </motion.div>
 
