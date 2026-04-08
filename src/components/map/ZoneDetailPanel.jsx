@@ -43,7 +43,11 @@ export default function ZoneDetailPanel({ zone, onClose, userEmail }) {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.22 }}
-        style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(12px)" }}
+        style={{
+          background: "rgba(0,0,0,0.6)",
+          backdropFilter: "blur(12px)",
+          pointerEvents: showExplorer ? 'none' : 'auto' // Désactiver les événements si explorer ouvert
+        }}
         onClick={onClose}
       >
         <motion.div
@@ -53,6 +57,7 @@ export default function ZoneDetailPanel({ zone, onClose, userEmail }) {
             borderTop: "1px solid rgba(255,255,255,0.07)",
             paddingBottom: "calc(80px + env(safe-area-inset-bottom))",
             boxShadow: "0 -8px 32px rgba(0,0,0,0.5)",
+            pointerEvents: showExplorer ? 'none' : 'auto' // Désactiver les événements si explorer ouvert
           }}
           variants={modalSlideUp}
           initial="initial"

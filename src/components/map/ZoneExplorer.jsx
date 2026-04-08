@@ -27,6 +27,11 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
   const centerLat = (zLat + 0.5) * ZONE_SIZE_DEG;
   const centerLng = (zLng + 0.5) * ZONE_SIZE_DEG;
 
+  // Debug: monitor zoom level changes
+  useEffect(() => {
+    console.log('[ZoneExplorer] Zoom level changed to:', zoomLevel);
+  }, [zoomLevel]);
+
   // Charger les données
   useEffect(() => {
     loadZoneData();
@@ -165,19 +170,24 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
 
   const handleZoomOut = () => {
     console.log('[ZoneExplorer] Zoom out clicked, current:', zoomLevel);
+    console.log('[ZoneExplorer] Checking condition: zoomLevel > 10 =', zoomLevel > 10);
+
     if (zoomLevel > 10) {
+      console.log('[ZoneExplorer] Inside zoom out branch - should decrease zoom');
       feedback('tap', { haptic: true, sound: false });
       setZoomLevel(z => {
         const newZoom = Math.max(z - 1, 10);
-        console.log('[ZoneExplorer] New zoom level:', newZoom);
+        console.log('[ZoneExplorer] Setting new zoom level:', newZoom, 'from:', z);
         return newZoom;
       });
+      console.log('[ZoneExplorer] After setZoomLevel call');
     } else {
       // Au niveau de zoom minimum, "zoom out" ferme l'explorateur
       console.log('[ZoneExplorer] At min zoom, closing explorer');
       feedback('tap', { haptic: true, sound: false });
       onClose();
     }
+    console.log('[ZoneExplorer] handleZoomOut completed');
   };
 
   const toggleMyDiscoveries = () => {
