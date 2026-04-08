@@ -21,11 +21,11 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
   const [zoomLevel, setZoomLevel] = useState(15);
   const [showOnlyMyDiscoveries, setShowOnlyMyDiscoveries] = useState(false);
 
-  // Calculer centre de la zone
-  const ZONE_DEG = 0.0045;
+  // Calculer centre de la zone (même logique que ZoneDetailPanel)
+  const ZONE_SIZE_DEG = 0.0045; // Une zone = 0.0045° (~500m)
   const [zLat, zLng] = zone.zone_id.split('_').map(Number);
-  const centerLat = (zLat + 0.5) * ZONE_DEG;
-  const centerLng = (zLng + 0.5) * ZONE_DEG;
+  const centerLat = (zLat + 0.5) * ZONE_SIZE_DEG;
+  const centerLng = (zLng + 0.5) * ZONE_SIZE_DEG;
 
   // Charger les données
   useEffect(() => {
@@ -61,6 +61,9 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
     setLoading(true);
 
     try {
+      console.log('[ZoneExplorer] Loading zone:', zone.zone_id);
+      console.log('[ZoneExplorer] Center calculated:', { centerLat, centerLng });
+
       // Calculer les limites géographiques (rayon 2km)
       const latDelta = ZONE_RADIUS_KM / 111; // 1 degré lat ≈ 111 km
       const lngDelta = ZONE_RADIUS_KM / (111 * Math.cos(centerLat * Math.PI / 180));
@@ -71,6 +74,8 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
         lngMin: centerLng - lngDelta,
         lngMax: centerLng + lngDelta,
       };
+
+      console.log('[ZoneExplorer] Query bounds:', bounds);
 
       // 1. Charger espèces de référence
       const { data: refData, error: refError } = await supabase
@@ -88,7 +93,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
       // 2. Charger découvertes utilisateurs
       const { data: discData, error: discError } = await supabase
         .from('plant_discoveries')
-        .select('*, user_profiles(display_name)')
+        .select('*')
         .gte('latitude', bounds.latMin)
         .lte('latitude', bounds.latMax)
         .gte('longitude', bounds.lngMin)
@@ -100,7 +105,13 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
         console.error('[ZoneExplorer] Erreur discoveries:', discError);
       }
 
-      // Formatter les découvertes avec nom utilisateur
+      console.log('[ZoneExplorer] Raw data:', {
+        refCount: refData?.length || 0,
+        discCount: discData?.length || 0,
+        sampleDisc: discData?.[0],
+      });
+
+      // Formatter les découvertes avec nom utilisateur (email jusqu'à @)
       const formattedDiscoveries = (discData || []).map(d => ({
         id: d.id,
         common_name: d.common_name,
@@ -109,7 +120,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
         longitude: d.longitude,
         category: d.category || 'plant',
         rarity: d.rarity || 'commune',
-        user_name: d.user_profiles?.display_name || d.user_email?.split('@')[0] || 'Anonyme',
+        user_name: d.user_email?.split('@')[0] || 'Anonyme',
         user_email: d.user_email,
         created_at: d.created_at,
       }));
@@ -119,11 +130,15 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
 
       // Calculer stats
       const uniqueUsers = new Set(formattedDiscoveries.map(d => d.user_email)).size;
-      setStats({
+      const stats = {
         ref: refData?.length || 0,
         users: formattedDiscoveries.length,
         uniqueUsers,
-      });
+      };
+      setStats(stats);
+
+      console.log('[ZoneExplorer] Stats calculated:', stats);
+      console.log('[ZoneExplorer] Formatted discoveries sample:', formattedDiscoveries.slice(0, 2));
     } catch (err) {
       console.error('[ZoneExplorer] Erreur chargement:', err);
     } finally {
@@ -137,16 +152,31 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
   };
 
   const handleZoomIn = () => {
+    console.log('[ZoneExplorer] Zoom in clicked, current:', zoomLevel);
     if (zoomLevel < 18) {
       feedback('tap', { haptic: true, sound: false });
-      setZoomLevel(z => Math.min(z + 1, 18));
+      setZoomLevel(z => {
+        const newZoom = Math.min(z + 1, 18);
+        console.log('[ZoneExplorer] New zoom level:', newZoom);
+        return newZoom;
+      });
     }
   };
 
   const handleZoomOut = () => {
+    console.log('[ZoneExplorer] Zoom out clicked, current:', zoomLevel);
     if (zoomLevel > 10) {
       feedback('tap', { haptic: true, sound: false });
-      setZoomLevel(z => Math.max(z - 1, 10));
+      setZoomLevel(z => {
+        const newZoom = Math.max(z - 1, 10);
+        console.log('[ZoneExplorer] New zoom level:', newZoom);
+        return newZoom;
+      });
+    } else {
+      // Au niveau de zoom minimum, "zoom out" ferme l'explorateur
+      console.log('[ZoneExplorer] At min zoom, closing explorer');
+      feedback('tap', { haptic: true, sound: false });
+      onClose();
     }
   };
 
@@ -325,19 +355,23 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
 
               <button
                 onClick={handleZoomOut}
-                disabled={zoomLevel <= 10}
                 className="min-w-[44px] min-h-[44px] flex items-center justify-center"
                 style={{
-                  background: zoomLevel <= 10 ? 'rgba(255,255,255,0.03)' : 'rgba(45,122,31,0.15)',
-                  border: `1px solid ${zoomLevel <= 10 ? 'rgba(255,255,255,0.05)' : 'rgba(45,122,31,0.4)'}`,
+                  background: zoomLevel <= 10 ? 'rgba(220,50,50,0.15)' : 'rgba(45,122,31,0.15)',
+                  border: `1px solid ${zoomLevel <= 10 ? 'rgba(220,50,50,0.4)' : 'rgba(45,122,31,0.4)'}`,
                   borderRadius: '8px',
                   backdropFilter: 'blur(12px)',
-                  opacity: zoomLevel <= 10 ? 0.4 : 1,
-                  cursor: zoomLevel <= 10 ? 'not-allowed' : 'pointer',
+                  opacity: 1,
+                  cursor: 'pointer',
                   transition: 'all 0.2s ease',
                 }}
+                title={zoomLevel <= 10 ? 'Retour à la zone' : 'Dézoomer'}
               >
-                <Minus className="w-5 h-5" style={{ color: 'var(--v1v-green)' }} />
+                {zoomLevel <= 10 ? (
+                  <X className="w-5 h-5" style={{ color: '#FF6B6B' }} />
+                ) : (
+                  <Minus className="w-5 h-5" style={{ color: 'var(--v1v-green)' }} />
+                )}
               </button>
 
               {/* Indicateur niveau de zoom */}
