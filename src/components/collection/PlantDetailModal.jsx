@@ -1,7 +1,11 @@
 import { createPortal } from "react-dom";
-import { X, MapPin, Calendar, Utensils, AlertTriangle, Lock, ChevronRight, Target } from "lucide-react";
+import { X, MapPin, Calendar, Utensils, AlertTriangle, Lock, ChevronRight, Target, Share2 } from "lucide-react";
 import BenefitsPanel from "@/components/shared/BenefitsPanel";
-import { useEffect, useRef } from "react";
+import DiscoveryShareCard from "@/components/identify/DiscoveryShareCard";
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { modalSlideUp } from "@/motion/variants";
+import { SPRING } from "@/motion/constants";
 
 function InfoBlock({ label, children }) {
   return (
@@ -13,20 +17,11 @@ function InfoBlock({ label, children }) {
 }
 
 export default function PlantDetailModal({ plant, isPro, onClose, onLearnMore }) {
-  const sheetRef = useRef(null);
+  const [showShare, setShowShare] = useState(false);
 
   useEffect(() => {
     if (!plant) return;
     document.body.style.overflow = "hidden";
-    // Slide in
-    const el = sheetRef.current;
-    if (el) {
-      el.style.transform = "translateY(100%)";
-      requestAnimationFrame(() => {
-        el.style.transition = "transform 320ms cubic-bezier(0.32,0.72,0,1)";
-        el.style.transform = "translateY(0)";
-      });
-    }
     return () => { document.body.style.overflow = ""; };
   }, [plant]);
 
@@ -42,52 +37,60 @@ export default function PlantDetailModal({ plant, isPro, onClose, onLearnMore })
   const rs = rarityStyles[plant.rarity] || rarityStyles.commune;
   const lbl = rarityLabels[plant.rarity] || "Commune";
 
-  const handleClose = () => {
-    const el = sheetRef.current;
-    if (el) {
-      el.style.transition = "transform 260ms cubic-bezier(0.32,0.72,0,1)";
-      el.style.transform = "translateY(100%)";
-      setTimeout(onClose, 260);
-    } else {
-      onClose();
-    }
-  };
-
   return createPortal(
-    <div
-      className="fixed inset-0 z-[9999] flex items-end"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
-      onClick={handleClose}
-    >
-      <div
-        ref={sheetRef}
-        className="w-full max-w-md mx-auto flex flex-col"
-        style={{
-          maxHeight: "92vh",
-          background: "var(--v1v-bg)",
-          borderTop: `1px solid ${rs.dot}55`,
-          borderRadius: "20px 20px 0 0",
-          boxShadow: `0 -8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04) inset`,
-          overflowY: "auto",
-          WebkitOverflowScrolling: "touch",
-        }}
-        onClick={e => e.stopPropagation()}
+    <AnimatePresence mode="wait">
+      <motion.div
+        className="fixed inset-0 z-[9999] flex items-end"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.22 }}
+        style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
+        onClick={onClose}
       >
+        <motion.div
+          className="w-full max-w-md mx-auto flex flex-col will-animate"
+          style={{
+            maxHeight: "92vh",
+            background: "var(--v1v-bg)",
+            borderTop: `1px solid ${rs.dot}55`,
+            borderRadius: "20px 20px 0 0",
+            boxShadow: `0 -8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04) inset`,
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch",
+          }}
+          variants={modalSlideUp}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          onClick={e => e.stopPropagation()}
+        >
         {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
           <div style={{ width: 36, height: 4, borderRadius: 4, background: "rgba(255,255,255,0.12)" }} />
         </div>
 
         {/* Hero image */}
-        <div className="relative w-full flex-shrink-0" style={{ height: 220 }}>
-          {plant.photo_url ? (
+        <div className="relative w-full flex-shrink-0" style={{ height: 280 }}>
+          {plant.photo_url && plant.photo_url.trim() !== "" ? (
             <>
               <img
                 src={plant.photo_url}
                 alt={plant.common_name}
-                className="absolute inset-0 w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full"
+                style={{ objectFit: "cover", objectPosition: "center" }}
+                onError={e => {
+                  console.error('[PlantDetailModal] Failed to load image:', plant.photo_url);
+                  e.currentTarget.style.display = "none";
+                  const fallback = e.currentTarget.parentElement.querySelector('.fallback-icon');
+                  if (fallback) fallback.classList.remove('hidden');
+                }}
               />
               <div className="absolute inset-0" style={{ background: "linear-gradient(to top, var(--v1v-bg) 0%, rgba(10,20,10,0.4) 50%, transparent 100%)" }} />
+              {/* Fallback shown if image fails */}
+              <div className="absolute inset-0 flex items-center justify-center fallback-icon hidden" style={{ background: rs.bg }}>
+                <Target className="w-16 h-16" style={{ color: rs.scopeColor, opacity: 0.4 }} />
+              </div>
             </>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center" style={{ background: rs.bg }}>
@@ -96,14 +99,16 @@ export default function PlantDetailModal({ plant, isPro, onClose, onLearnMore })
           )}
 
           {/* Close button */}
-          <button
-            onClick={handleClose}
+          <motion.button
+            onClick={onClose}
             aria-label="Fermer"
             className="absolute top-3 right-3 flex items-center justify-center"
             style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)" }}
+            whileTap={{ scale: 0.9 }}
+            transition={{ duration: 0.15 }}
           >
             <X className="w-4 h-4" style={{ color: "var(--v1v-fg)" }} />
-          </button>
+          </motion.button>
 
           {/* Rarity pill — overlaid on image */}
           <div
@@ -202,6 +207,16 @@ export default function PlantDetailModal({ plant, isPro, onClose, onLearnMore })
             </div>
           )}
 
+          {/* Bouton Partager */}
+          <button
+            onClick={() => setShowShare(true)}
+            className="flex items-center justify-between w-full px-4 py-3.5 transition-opacity active:opacity-60"
+            style={{ background: "rgba(45,122,31,0.15)", border: "1px solid rgba(45,122,31,0.3)", borderRadius: 12 }}
+          >
+            <span className="text-[11px] font-black uppercase tracking-[0.3em]" style={{ color: "var(--v1v-green)" }}>Partager cette découverte</span>
+            <Share2 className="w-4 h-4" style={{ color: "var(--v1v-green-faint)" }} />
+          </button>
+
           {/* En savoir plus button */}
           <button
             onClick={() => onLearnMore && onLearnMore(plant)}
@@ -214,8 +229,28 @@ export default function PlantDetailModal({ plant, isPro, onClose, onLearnMore })
 
           <BenefitsPanel key={plant.id} species={plant} isOpen={true} />
         </div>
-      </div>
-    </div>,
+      </motion.div>
+
+      {/* Share Card Modal */}
+      {showShare && (
+        <DiscoveryShareCard
+          data={{
+            common_name: plant.common_name,
+            scientific_name: plant.scientific_name,
+            rarity: plant.rarity || "commune",
+            photo_url: plant.photo_url,
+            xp_gained: plant.points_earned || 10,
+            flora_gained: 0,
+            discovery_rank: null,
+            detection_method: "visual",
+            user_name: null,
+            date: plant.discovered_date ? new Date(plant.discovered_date).toLocaleDateString("fr-FR") : new Date().toLocaleDateString("fr-FR"),
+          }}
+          onClose={() => setShowShare(false)}
+        />
+      )}
+    </motion.div>
+    </AnimatePresence>,
     document.body
   );
 }

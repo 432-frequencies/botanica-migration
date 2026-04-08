@@ -5,10 +5,15 @@ import { saveDiscovery } from "@/api/saveDiscovery";
 import { identifyPlant } from "@/api/identifyPlant";
 import { uploadPhoto } from "@/api/uploadPhoto";
 import { createPageUrl } from "@/utils";
+import { feedback } from "@/utils/feedback";
 import { Camera, User, Zap, Shield, WifiOff, Flame, MapPin } from "lucide-react";
+import { motion } from "framer-motion";
+import { fadeInUp } from "@/motion/variants";
+import { useScrollReveal } from "@/motion/hooks/useScrollReveal";
 import CameraCapture from "@/components/identify/CameraCapture";
 import PlantResult from "@/components/identify/PlantResult";
 import AchievementToast from "@/components/identify/AchievementToast";
+import LevelUpCelebration from "@/components/shared/LevelUpCelebration";
 import XPLevelBar, { getCurrentLevel } from "@/components/home/XPLevelBar";
 import XPLevelModule from "@/components/home/XPLevelModule";
 import LocalZoneWidget from "@/components/home/LocalZoneWidget";
@@ -79,6 +84,20 @@ function SkeletonBlock({ className, style }) {
   );
 }
 
+function ScrollRevealSection({ children, threshold = 0.1 }) {
+  const [ref, isVisible] = useScrollReveal({ once: true, threshold });
+  return (
+    <motion.div
+      ref={ref}
+      variants={fadeInUp}
+      initial="hidden"
+      animate={isVisible ? "visible" : "hidden"}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 export default function Home() {
   const isActive = useIsActivePage("Home");
   const { isAuthenticated, isLoadingAuth, navigateToLogin } = useAuth();
@@ -106,6 +125,7 @@ export default function Home() {
   const [streakWarning, setStreakWarning] = useState(false);
   const [identifyMode, setIdentifyMode] = useState("plant");
   const [showAudio, setShowAudio] = useState(false);
+  const [levelUpData, setLevelUpData] = useState(null);
   const geoRef = useRef(null);
   const userDataSnapshot = useRef(null);
 
@@ -269,11 +289,13 @@ export default function Home() {
       setToast("Erreur : image vide. Réessaie.");
       return;
     }
+    // Ensure data URI format for <img src>
+    const dataUri = imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
     setShowCamera(false);
     setIdentifying(true);
     setIdentifyMode("plant");
     setShowAudio(false);
-    setCapturedImage(imageBase64);
+    setCapturedImage(dataUri);
     setScanPhase(1);
     setScanTimeout(false);
     const phaseTimer1 = setTimeout(() => setScanPhase(2), 3000);
@@ -411,10 +433,21 @@ export default function Home() {
         category: savedResult.category || "plant",
         common_name: top.common_name,
         scientific_name: top.scientific_name,
+        family: top.family,
         photo_url: photoUrl,
         latitude: lat,
         longitude: lng,
         confidence: top.confidence,
+        rarity: top.rarity,
+        is_edible: top.is_edible,
+        is_toxic: top.is_toxic,
+        description: top.description,
+        habitat: top.habitat,
+        ecological_role: top.ecological_role,
+        biodiversity_importance: top.biodiversity_importance,
+        edibility_details: top.edibility_details,
+        medicinal_uses: top.medicinal_uses,
+        anecdote: top.anecdote,
       });
 
       if (saveRes?.error) throw new Error(saveRes.error);
@@ -427,10 +460,27 @@ export default function Home() {
       const lvl = saveRes?.level;
       const prevLvl = getCurrentLevel(snapshot?.profile?.total_points || 0)?.level;
       const levelUp = lvl && prevLvl && lvl > prevLvl;
-      setToast(levelUp
-        ? `⬆ LEVEL UP — LVL ${lvl}! +${xp} XP`
-        : `+${xp} XP — ${top.common_name} ajouté.`
-      );
+
+      // Feedback haptique et sonore selon le résultat
+      if (levelUp) {
+        const currentLevelData = getCurrentLevel(snapshot?.profile?.total_points || 0);
+        const newLevelData = getCurrentLevel((snapshot?.profile?.total_points || 0) + xp);
+        setLevelUpData({
+          level: newLevelData.level,
+          label: newLevelData.label,
+          xp: xp,
+        });
+      } else if (top.rarity === 'legendaire') {
+        feedback('legendary', { haptic: true, sound: true });
+        setToast(`✨ LÉGENDAIRE! +${xp} XP — ${top.common_name}`);
+      } else if (top.rarity === 'rare') {
+        feedback('rare', { haptic: true, sound: false });
+        setToast(`⭐ RARE! +${xp} XP — ${top.common_name}`);
+      } else {
+        feedback('success', { haptic: true, sound: false });
+        setToast(`+${xp} XP — ${top.common_name} ajouté.`);
+      }
+
       if (saveRes?.new_achievements?.length > 0) {
         setAchievementQueue(saveRes.new_achievements);
       }
@@ -548,6 +598,15 @@ export default function Home() {
         <AchievementToast achievements={achievementQueue} onDone={() => setAchievementQueue([])} />
       )}
 
+      {levelUpData && (
+        <LevelUpCelebration
+          level={levelUpData.level}
+          label={levelUpData.label}
+          xp={levelUpData.xp}
+          onClose={() => setLevelUpData(null)}
+        />
+      )}
+
       {showCamera && (
         <ErrorBoundary fallback={
           <div style={{ position: "fixed", inset: 0, background: "#F2EDE4", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 50, gap: 16 }}>
@@ -659,15 +718,56 @@ export default function Home() {
       )}
 
       {saving && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ background: "var(--v1v-bg-overlay-heavy)" }}>
-          <p className="text-xs tracking-[0.5em] uppercase mb-8" style={{ color: "var(--v1v-green-muted)" }}>Enregistrement en cours...</p>
+        <motion.div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center"
+          style={{ background: "var(--v1v-bg-overlay-heavy)" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.22 }}
+        >
+          <motion.p
+            className="text-xs tracking-[0.5em] uppercase mb-8"
+            style={{ color: "var(--v1v-green-muted)" }}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            Enregistrement en cours...
+          </motion.p>
           <div className="relative mb-8">
-            <div className="w-20 h-20 rounded-full border-2 animate-spin" style={{ borderColor: "var(--v1v-green)", borderTopColor: "transparent" }} />
-            <Zap className="w-6 h-6 absolute inset-0 m-auto" style={{ color: "var(--v1v-green)" }} />
+            <motion.div
+              className="w-20 h-20 rounded-full border-2"
+              style={{ borderColor: "var(--v1v-green)", borderTopColor: "transparent" }}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            />
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.3 }}
+            >
+              <Zap className="w-6 h-6 absolute inset-0 m-auto" style={{ color: "var(--v1v-green)" }} />
+            </motion.div>
           </div>
-          <p className="text-3xl font-black uppercase tracking-[0.3em]" style={{ color: "var(--v1v-green)" }}>Gain XP</p>
-          <p className="text-xs tracking-[0.4em] uppercase mt-2" style={{ color: "var(--v1v-green-muted)" }}>Ajout à ton journal...</p>
-        </div>
+          <motion.p
+            className="text-3xl font-black uppercase tracking-[0.3em]"
+            style={{ color: "var(--v1v-green)" }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.15 }}
+          >
+            Gain XP
+          </motion.p>
+          <motion.p
+            className="text-xs tracking-[0.4em] uppercase mt-2"
+            style={{ color: "var(--v1v-green-muted)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.25 }}
+          >
+            Ajout à ton journal...
+          </motion.p>
+        </motion.div>
       )}
 
       {showLimitModal && (
@@ -716,23 +816,27 @@ export default function Home() {
               <SkeletonBlock className="h-12" style={{ border: "1px solid rgba(45,122,31,0.1)" }} />
             </div>
           ) : (
-            <div className="px-5 py-3">
-              <XPLevelModule totalXP={totalXP} />
-            </div>
+            <ScrollRevealSection>
+              <div className="px-5 py-3">
+                <XPLevelModule totalXP={totalXP} />
+              </div>
+            </ScrollRevealSection>
           )}
         </BlockErrorBoundary>
 
         {/* BLOC 2 — Zone actuelle + CTA explorer */}
         <BlockErrorBoundary label="Zone indisponible">
           {dataLoaded && geoPermission === "granted" && geoCoords && (
-            <div className="px-5 py-3">
-              <LocalZoneWidget userEmail={userData?.user?.email} geoCoords={geoCoords} />
-              <Link to={createPageUrl("TerritorialMap")} className="block mt-3">
-                <button className="w-full py-3 text-xs font-black uppercase tracking-[0.3em] transition-all" style={{ background: "rgba(45,122,31,0.2)", border: "1px solid rgba(45,122,31,0.4)", color: G }}>
-                  Voir la carte de contrôle →
-                </button>
-              </Link>
-            </div>
+            <ScrollRevealSection>
+              <div className="px-5 py-3">
+                <LocalZoneWidget userEmail={userData?.user?.email} geoCoords={geoCoords} />
+                <Link to={createPageUrl("TerritorialMap")} className="block mt-3">
+                  <button className="w-full py-3 text-xs font-black uppercase tracking-[0.3em] transition-all" style={{ background: "rgba(45,122,31,0.2)", border: "1px solid rgba(45,122,31,0.4)", color: G }}>
+                    Voir la carte de contrôle →
+                  </button>
+                </Link>
+              </div>
+            </ScrollRevealSection>
           )}
         </BlockErrorBoundary>
 
@@ -748,23 +852,36 @@ export default function Home() {
         {/* BLOC 2.5 — Zone actuelle status */}
         <BlockErrorBoundary label="Statut zone indisponible">
           {dataLoaded && userData?.user?.email && geoCoords && (
-            <div className="px-5 py-0">
-              <CurrentZoneStatus
-                userEmail={userData.user.email}
-                lat={geoCoords.lat}
-                lng={geoCoords.lng}
-                userPlants={userData?.discoveries?.length || 0}
-              />
-            </div>
+            <ScrollRevealSection>
+              <div className="px-5 py-0">
+                <CurrentZoneStatus
+                  userEmail={userData.user.email}
+                  lat={geoCoords.lat}
+                  lng={geoCoords.lng}
+                  userPlants={userData?.discoveries?.length || 0}
+                />
+              </div>
+            </ScrollRevealSection>
           )}
         </BlockErrorBoundary>
 
         {/* BLOC 3 — Scanner principal */}
         <BlockErrorBoundary label="Scanner indisponible">
-          <div className="px-5 py-3 relative z-10">
-            <button
-              onClick={() => setShowCamera(true)}
-              className="w-full relative overflow-hidden transition-all active:scale-[0.97]"
+          <ScrollRevealSection>
+            <div className="px-5 py-3 relative z-10">
+              <button
+              onClick={() => {
+                feedback('scan', { haptic: true, sound: false });
+                setShowCamera(true);
+              }}
+              onPointerDown={(e) => {
+                e.currentTarget.style.transform = "scale(0.97)";
+                feedback('tap', { haptic: true, sound: false });
+              }}
+              onPointerUp={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+              className="w-full relative overflow-hidden transition-all"
               style={{
                 background: G,
                 color: "var(--v1v-bg)",
@@ -793,7 +910,8 @@ export default function Home() {
               </p>
               <div className="flex-1 h-px" style={{ background: "rgba(45,122,31,0.15)" }} />
             </div>
-          </div>
+            </div>
+          </ScrollRevealSection>
         </BlockErrorBoundary>
 
         {/* Spacer pour bottom nav */}

@@ -69,39 +69,173 @@ export default function PlantResult({ result, imageBase64, isPro, onSave, onClos
   if (showCelebration) return createPortal(
     <div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center px-8"
-      style={{ background: "#0A0A0A", border: `3px solid ${celebrationBorder}`, boxShadow: `0 0 60px ${celebrationGlow}` }}
+      style={{
+        background: "linear-gradient(135deg, #000000 0%, #0A0A0A 50%, #000000 100%)",
+        animation: "fadeIn 0.4s ease-out"
+      }}
     >
-      <div className="text-7xl mb-6" style={{ filter: `drop-shadow(0 0 20px ${celebrationGlow})` }}>
-        {CATEGORY_EMOJI_BIG[category] || "🌿"}
+      {/* Particles de fond animées */}
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        background: `radial-gradient(circle at 30% 20%, ${celebrationGlow} 0%, transparent 50%), radial-gradient(circle at 70% 80%, ${celebrationGlow} 0%, transparent 50%)`,
+        animation: "particleFloat 8s ease-in-out infinite"
+      }} />
+
+      {/* Cercles concentriques animés */}
+      <div style={{
+        position: "absolute",
+        width: "300px",
+        height: "300px",
+        borderRadius: "50%",
+        border: `1px solid ${celebrationBorder}`,
+        opacity: 0.2,
+        animation: "ripple 3s ease-out infinite"
+      }} />
+      <div style={{
+        position: "absolute",
+        width: "400px",
+        height: "400px",
+        borderRadius: "50%",
+        border: `1px solid ${celebrationBorder}`,
+        opacity: 0.1,
+        animation: "ripple 3s ease-out infinite 0.5s"
+      }} />
+
+      {/* Contenu principal */}
+      <div style={{ position: "relative", zIndex: 10, animation: "slideUp 0.6s ease-out" }}>
+        {/* Icône avec effet de glow pulsant */}
+        <div className="text-8xl mb-8" style={{
+          filter: `drop-shadow(0 0 40px ${celebrationGlow})`,
+          animation: "iconPulse 2s ease-in-out infinite"
+        }}>
+          {CATEGORY_EMOJI_BIG[category] || "🌿"}
+        </div>
+
+        {/* Badge de rareté */}
+        <div style={{
+          display: "inline-block",
+          padding: "8px 20px",
+          background: `linear-gradient(90deg, ${celebrationBorder}22, ${celebrationBorder}44, ${celebrationBorder}22)`,
+          border: `2px solid ${celebrationBorder}`,
+          borderRadius: "30px",
+          marginBottom: "16px",
+          animation: "glowPulse 2s ease-in-out infinite"
+        }}>
+          <p className="text-[10px] font-black tracking-[0.6em] uppercase" style={{ color: celebrationBorder }}>
+            {celebrationLabel}
+          </p>
+        </div>
+
+        {/* Nom de l'espèce */}
+        <h2 className="text-4xl font-black uppercase text-center leading-tight mb-3" style={{
+          color: "#FFFFFF",
+          textShadow: `0 0 30px ${celebrationGlow}, 0 2px 10px rgba(0,0,0,0.5)`,
+          animation: "textAppear 0.8s ease-out 0.3s backwards"
+        }}>
+          {top_result.common_name}
+        </h2>
+
+        {/* Nom scientifique */}
+        <p className="text-base italic mb-8" style={{
+          color: "rgba(255,255,255,0.6)",
+          animation: "textAppear 0.8s ease-out 0.5s backwards"
+        }}>
+          {top_result.scientific_name}
+        </p>
+
+        {/* XP Badge style Tesla */}
+        <div style={{
+          background: `linear-gradient(135deg, ${celebrationBorder}11, ${celebrationBorder}22)`,
+          border: `2px solid ${celebrationBorder}`,
+          borderRadius: "16px",
+          padding: "24px",
+          marginBottom: "40px",
+          animation: "scaleIn 0.6s ease-out 0.7s backwards",
+          boxShadow: `0 10px 40px ${celebrationGlow}, inset 0 1px 0 rgba(255,255,255,0.1)`
+        }}>
+          <p className="text-5xl font-black mb-2" style={{
+            background: `linear-gradient(135deg, ${celebrationBorder}, #FFD700)`,
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            textShadow: "none"
+          }}>
+            +{xp} XP
+          </p>
+          <p className="text-[10px] font-black uppercase tracking-[0.4em]" style={{ color: "rgba(255,255,255,0.5)" }}>
+            Nouvelle espèce découverte
+          </p>
+        </div>
+
+        {/* Boutons */}
+        <div className="w-full flex flex-col gap-3" style={{ animation: "slideUp 0.6s ease-out 0.9s backwards" }}>
+          <button
+            onClick={() => setShowShare(true)}
+            className="w-full font-black uppercase tracking-[0.3em] text-[11px] transition-all active:scale-95"
+            style={{
+              background: `linear-gradient(135deg, ${celebrationBorder}, ${celebrationBorder}dd)`,
+              color: "#000",
+              minHeight: "52px",
+              borderRadius: "12px",
+              boxShadow: `0 4px 20px ${celebrationGlow}`,
+              border: "none"
+            }}
+          >
+            Partager cette découverte
+          </button>
+          <button
+            onClick={() => setShowCelebration(false)}
+            className="w-full font-black uppercase tracking-[0.3em] text-[11px] transition-all active:scale-95"
+            style={{
+              background: "transparent",
+              color: "rgba(255,255,255,0.7)",
+              border: "2px solid rgba(255,255,255,0.2)",
+              minHeight: "52px",
+              borderRadius: "12px"
+            }}
+          >
+            Voir la fiche complète →
+          </button>
+        </div>
       </div>
-      <p className="text-[9px] font-black tracking-[0.6em] uppercase mb-3" style={{ color: celebrationBorder }}>
-        Découverte {celebrationLabel}
-      </p>
-      <h2 className="text-3xl font-black uppercase text-center leading-tight mb-2" style={{ color: "#F5F0E8" }}>
-        {top_result.common_name}
-      </h2>
-      <p className="text-sm italic mb-6" style={{ color: "rgba(245,240,232,0.5)" }}>{top_result.scientific_name}</p>
-      <div className="flex flex-col items-center gap-1 mb-10">
-        <p className="text-4xl font-black" style={{ color: "#C8960A", textShadow: "0 0 30px rgba(200,150,10,0.8)" }}>+{xp} XP</p>
-        <p className="text-[9px] font-black uppercase tracking-[0.4em]" style={{ color: "rgba(200,150,10,0.6)" }}>Nouvelle espèce</p>
-      </div>
-      <div className="w-full flex flex-col gap-3">
-        <button
-          onClick={() => setShowShare(true)}
-          className="w-full font-black uppercase tracking-[0.3em] text-[10px] transition-all active:opacity-80"
-          style={{ background: celebrationBorder, color: "#000", minHeight: "48px" }}
-        >
-          Partager cette découverte
-        </button>
-        <button
-          onClick={() => setShowCelebration(false)}
-          className="w-full font-black uppercase tracking-[0.3em] text-[10px] transition-all active:opacity-80"
-          style={{ background: "transparent", color: "rgba(245,240,232,0.6)", border: "1px solid rgba(245,240,232,0.2)", minHeight: "44px" }}
-        >
-          Voir la fiche →
-        </button>
-      </div>
-      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }`}</style>
+
+      {/* Animations CSS */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.8); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes textAppear {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes ripple {
+          0% { transform: scale(0.8); opacity: 0.3; }
+          50% { opacity: 0.15; }
+          100% { transform: scale(1.2); opacity: 0; }
+        }
+        @keyframes particleFloat {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-20px) rotate(5deg); }
+        }
+        @keyframes iconPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+        @keyframes glowPulse {
+          0%, 100% { box-shadow: 0 0 20px ${celebrationGlow}; }
+          50% { box-shadow: 0 0 40px ${celebrationGlow}, 0 0 60px ${celebrationGlow}; }
+        }
+      `}</style>
+
       {showShare && <DiscoveryShareCard data={shareData} onClose={() => setShowShare(false)} />}
     </div>,
     document.body
@@ -135,29 +269,103 @@ export default function PlantResult({ result, imageBase64, isPro, onSave, onClos
           <div className="flex gap-4">
             <img src={imageBase64} alt="plant" className="w-28 h-28 object-cover flex-shrink-0" style={{ border: "1px solid var(--v1v-green-ghost)", borderRadius: 12 }} />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <span className="text-[9px] font-black tracking-[0.3em] px-2 py-0.5" style={{ background: "var(--v1v-green-bg-subtle)", color: "var(--v1v-green)", border: "1px solid var(--v1v-green-ghost)", borderRadius: 6 }}>
-                  {rarity.tier} — {rarity.label}
-                </span>
-                <span className="text-[9px] font-black tracking-widest" style={{ color: "var(--v1v-green-faint)" }}>{top_result.confidence}% match</span>
-              </div>
-              <h3 className="text-xl font-black uppercase leading-tight mb-0.5" style={{ color: "var(--v1v-fg)" }}>{top_result.common_name}</h3>
-              <p className="text-xs italic mb-0.5" style={{ color: "var(--v1v-fg-faint)" }}>{top_result.scientific_name}</p>
-              {top_result.family && <p className="text-[9px] tracking-wider uppercase" style={{ color: "var(--v1v-fg-faint)" }}>Famille : {top_result.family}</p>}
+              {category === "rock" ? (
+                <>
+                  {/* Format spécial pour les minéraux */}
+                  <div className="mb-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[8px] font-black tracking-[0.3em] px-2 py-0.5" style={{ background: "rgba(120,90,70,0.15)", color: "rgba(180,140,100,0.9)", border: "1px solid rgba(120,90,70,0.3)", borderRadius: 6 }}>
+                        MINÉRAL
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-black uppercase leading-tight mb-1" style={{ color: "var(--v1v-fg)", letterSpacing: "0.02em" }}>
+                      {top_result.common_name}
+                      {alternatives && alternatives.length > 0 && ` / ${alternatives.slice(0, 2).map(alt => alt.common_name).join(' / ')}`}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xl font-black" style={{ color: "var(--v1v-green)" }}>{top_result.confidence}%</span>
+                        <span className="text-[8px] tracking-widest uppercase" style={{ color: "var(--v1v-fg-faint)" }}>Confiance</span>
+                      </div>
+                      {alternatives && alternatives.length > 0 && (
+                        <div className="text-[9px] tracking-wide" style={{ color: "var(--v1v-fg-faint)" }}>
+                          {alternatives.slice(0, 2).map((alt, i) => (
+                            <span key={i}> · {alt.confidence}%</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {top_result.scientific_name && top_result.scientific_name.trim().length > 0 && (
+                    <p className="text-xs italic mb-0.5" style={{ color: "var(--v1v-fg-faint)" }}>{top_result.scientific_name}</p>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Format classique pour les autres espèces */}
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <span className="text-[9px] font-black tracking-[0.3em] px-2 py-0.5" style={{ background: "var(--v1v-green-bg-subtle)", color: "var(--v1v-green)", border: "1px solid var(--v1v-green-ghost)", borderRadius: 6 }}>
+                      {rarity.tier} — {rarity.label}
+                    </span>
+                    <span className="text-[9px] font-black tracking-widest" style={{ color: "var(--v1v-green-faint)" }}>{top_result.confidence}% match</span>
+                  </div>
+                  <h3 className="text-xl font-black uppercase leading-tight mb-0.5" style={{ color: "var(--v1v-fg)" }}>{top_result.common_name}</h3>
+                  {top_result.scientific_name && top_result.scientific_name.trim().length > 0 && (
+                    <p className="text-xs italic mb-0.5" style={{ color: "var(--v1v-fg-faint)" }}>{top_result.scientific_name}</p>
+                  )}
+                  {top_result.family && top_result.family.trim().length > 0 && (
+                    <p className="text-[9px] tracking-wider uppercase" style={{ color: "var(--v1v-fg-faint)" }}>Famille : {top_result.family}</p>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
-          {/* Habitat / Behavior */}
-          {top_result.habitat && (
+          {/* Description */}
+          {top_result.description && top_result.description.trim().length > 0 && (
+            <div style={{ borderLeft: "2px solid var(--v1v-green-ghost)", paddingLeft: "12px" }}>
+              <p className="text-[8px] font-black tracking-[0.4em] uppercase mb-1.5" style={{ color: "var(--v1v-green-faint)" }}>Description</p>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>{top_result.description}</p>
+            </div>
+          )}
+
+          {/* Habitat */}
+          {top_result.habitat && top_result.habitat.trim().length > 0 && (
             <div style={{ borderLeft: "2px solid var(--v1v-green-ghost)", paddingLeft: "12px" }}>
               <p className="text-[8px] font-black tracking-[0.4em] uppercase mb-1.5" style={{ color: "var(--v1v-green-faint)" }}>Habitat</p>
               <p className="text-sm leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>{top_result.habitat}</p>
             </div>
           )}
-          {top_result.behavior && (
-            <div style={{ borderLeft: "2px solid var(--v1v-green-ghost)", paddingLeft: "12px" }}>
-              <p className="text-[8px] font-black tracking-[0.4em] uppercase mb-1.5" style={{ color: "var(--v1v-green-faint)" }}>{category === "rock" ? "Formation" : "Comportement"}</p>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>{top_result.behavior}</p>
+
+          {/* ⭐ RÔLE ÉCOLOGIQUE - MIS EN AVANT */}
+          {top_result.ecological_role && top_result.ecological_role.trim().length > 0 && (
+            <div style={{
+              background: "var(--v1v-green-bg-subtle)",
+              border: "2px solid var(--v1v-green-ghost)",
+              borderRadius: "12px",
+              padding: "16px"
+            }}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">🌍</span>
+                <p className="text-[9px] font-black tracking-[0.4em] uppercase" style={{ color: "var(--v1v-green)" }}>Rôle Écologique</p>
+              </div>
+              <p className="text-sm leading-relaxed font-medium" style={{ color: "var(--v1v-fg)" }}>{top_result.ecological_role}</p>
+            </div>
+          )}
+
+          {/* ⭐ IMPORTANCE BIODIVERSITÉ - MIS EN AVANT */}
+          {top_result.biodiversity_importance && top_result.biodiversity_importance.trim().length > 0 && (
+            <div style={{
+              background: "rgba(57,184,20,0.08)",
+              border: "2px solid rgba(57,184,20,0.25)",
+              borderRadius: "12px",
+              padding: "16px"
+            }}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">🦋</span>
+                <p className="text-[9px] font-black tracking-[0.4em] uppercase" style={{ color: "var(--v1v-green)" }}>Importance Biodiversité</p>
+              </div>
+              <p className="text-sm leading-relaxed font-medium" style={{ color: "var(--v1v-fg)" }}>{top_result.biodiversity_importance}</p>
             </div>
           )}
 
@@ -203,30 +411,22 @@ export default function PlantResult({ result, imageBase64, isPro, onSave, onClos
             </div>
           )}
 
-          {/* Description */}
-          {top_result.description && (
-            <div style={{ borderLeft: "2px solid var(--v1v-green-ghost)", paddingLeft: "12px" }}>
-              <p className="text-[8px] font-black tracking-[0.4em] uppercase mb-1.5" style={{ color: "var(--v1v-green-faint)" }}>Description</p>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>{top_result.description}</p>
-            </div>
-          )}
-
           {/* Detailed info - Pro only */}
           {isPro ? (
             <>
-              {top_result.edibility_details && (
+              {top_result.edibility_details && top_result.edibility_details.trim().length > 0 && (
                 <div style={{ borderLeft: "2px solid var(--v1v-green-ghost)", paddingLeft: "12px" }}>
                   <p className="text-[8px] font-black tracking-[0.4em] uppercase mb-1.5" style={{ color: "var(--v1v-green-faint)" }}>Comestibilité</p>
                   <p className="text-sm leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>{top_result.edibility_details}</p>
                 </div>
               )}
-              {top_result.medicinal_uses && (
+              {top_result.medicinal_uses && top_result.medicinal_uses.trim().length > 0 && (
                 <div style={{ borderLeft: "2px solid var(--v1v-green-ghost)", paddingLeft: "12px" }}>
                   <p className="text-[8px] font-black tracking-[0.4em] uppercase mb-1.5" style={{ color: "var(--v1v-green-faint)" }}>Usages Médicinaux</p>
                   <p className="text-sm leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>{top_result.medicinal_uses}</p>
                 </div>
               )}
-              {top_result.anecdote && (
+              {top_result.anecdote && top_result.anecdote.trim().length > 0 && (
                 <div style={{ borderLeft: "2px solid var(--v1v-green-ghost)", paddingLeft: "12px" }}>
                   <p className="text-[8px] font-black tracking-[0.4em] uppercase mb-1.5" style={{ color: "var(--v1v-green-faint)" }}>Notes de Terrain</p>
                   <p className="text-sm leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>{top_result.anecdote}</p>
@@ -234,7 +434,8 @@ export default function PlantResult({ result, imageBase64, isPro, onSave, onClos
               )}
             </>
           ) : (
-            (top_result.edibility_details || top_result.medicinal_uses) && (
+            ((top_result.edibility_details && top_result.edibility_details.trim().length > 0) ||
+             (top_result.medicinal_uses && top_result.medicinal_uses.trim().length > 0)) && (
               <div style={{ background: "var(--v1v-green-bg-subtle)", border: "1px solid var(--v1v-green-ghost)", borderRadius: 12, overflow: "hidden" }}>
                 <div className="relative px-4 pt-3 pb-0" style={{ maxHeight: "64px", overflow: "hidden" }}>
                   {top_result.edibility_details && (
@@ -263,8 +464,8 @@ export default function PlantResult({ result, imageBase64, isPro, onSave, onClos
             )
           )}
 
-          {/* Alternatives - Pro only */}
-          {isPro && alternatives && alternatives.length > 0 && (
+          {/* Alternatives - Pro only (masqué pour les roches car déjà affiché en haut) */}
+          {isPro && alternatives && alternatives.length > 0 && category !== "rock" && (
             <div>
               <p className="text-[8px] font-black tracking-[0.4em] uppercase mb-3" style={{ color: "var(--v1v-green-faint)" }}>Identifications alternatives</p>
               {alternatives.map((alt, i) => (
@@ -276,6 +477,14 @@ export default function PlantResult({ result, imageBase64, isPro, onSave, onClos
                   <span className="text-xs font-black" style={{ color: "var(--v1v-green-faint)" }}>{alt.confidence}%</span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Info pour les minéraux (non-Pro) */}
+          {!isPro && category === "rock" && alternatives && alternatives.length > 0 && (
+            <div style={{ background: "rgba(120,90,70,0.08)", border: "1px solid rgba(120,90,70,0.2)", borderRadius: 12, padding: "12px 16px" }}>
+              <p className="text-[9px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: "rgba(180,140,100,0.7)" }}>💎 Identifications multiples détectées</p>
+              <p className="text-[10px] leading-snug" style={{ color: "var(--v1v-fg-faint)" }}>Les minéraux sont complexes à identifier visuellement. Le pourcentage indique la confiance de l'IA pour chaque hypothèse.</p>
             </div>
           )}
 

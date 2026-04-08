@@ -4,13 +4,30 @@ export async function identifyPlant({ imageBase64, isAdminTest = false }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('Unauthorized');
 
-  const res = await fetch('/api/identify-plant', {
+  const url = '/api/identify-plant';
+  const bodyData = { imageBase64, isAdminTest };
+
+  console.log('[identifyPlant] Making request:', {
+    url,
+    method: 'POST',
+    imageLength: imageBase64?.length,
+    imageStart: imageBase64?.substring(0, 30),
+    hasSession: !!session,
+  });
+
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${session.access_token}`,
     },
-    body: JSON.stringify({ imageBase64, isAdminTest }),
+    body: JSON.stringify(bodyData),
+  });
+
+  console.log('[identifyPlant] Response received:', {
+    status: res.status,
+    statusText: res.statusText,
+    headers: Object.fromEntries(res.headers.entries()),
   });
 
   if (res.status === 429) return { error: 'LIMIT_REACHED' };

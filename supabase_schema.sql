@@ -64,7 +64,8 @@ CREATE TABLE IF NOT EXISTS plant_discoveries (
   medicinal_uses    TEXT,
   anecdote          TEXT,
   habitat           TEXT,
-  behavior          TEXT,
+  ecological_role   TEXT,
+  biodiversity_importance TEXT,
   latitude          DOUBLE PRECISION,
   longitude         DOUBLE PRECISION,
   location_name     TEXT,
@@ -266,6 +267,149 @@ CREATE POLICY "users can upsert own challenge progress"
 CREATE POLICY "users can update own challenge progress"
   ON challenge_progress FOR UPDATE
   USING (auth.email() = user_email);
+
+-- ─────────────────────────────────────────
+-- 10. AMBASSADORS (Système d'affiliation)
+-- ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS ambassadors (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code           TEXT NOT NULL UNIQUE,
+  name           TEXT NOT NULL,
+  contact_email  TEXT NOT NULL,
+  is_active      BOOLEAN NOT NULL DEFAULT true,
+  notes          TEXT,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ambassadors_code ON ambassadors(code) WHERE is_active = true;
+
+ALTER TABLE ambassadors ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view active ambassadors"
+  ON ambassadors FOR SELECT TO authenticated
+  USING (is_active = true);
+
+-- ─────────────────────────────────────────
+-- 11. AMBASSADOR_CONTRACTS
+-- ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS ambassador_contracts (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ambassador_id      UUID NOT NULL REFERENCES ambassadors(id) ON DELETE CASCADE,
+  valid_from         DATE NOT NULL,
+  valid_until        DATE,
+  rate_type          TEXT NOT NULL CHECK (rate_type IN ('percentage', 'fixed')),
+  rate_value         NUMERIC(10,2) NOT NULL,
+  grace_period_days  INTEGER NOT NULL DEFAULT 30,
+  notes              TEXT,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT valid_rate_value CHECK (rate_value > 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_contracts_ambassador_dates
+  ON ambassador_contracts(ambassador_id, valid_from, valid_until);
+
+ALTER TABLE ambassador_contracts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view contracts"
+  ON ambassador_contracts FOR SELECT TO authenticated
+  USING (true);
+
+-- ─────────────────────────────────────────
+-- 12. MODIFICATIONS USER_PROFILES (Affiliation)
+-- ─────────────────────────────────────────
+ALTER TABLE user_profiles
+  ADD COLUMN IF NOT EXISTS referred_by_code TEXT REFERENCES ambassadors(code) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS referred_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS pro_since TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS pro_until TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_user_profiles_referred_by ON user_profiles(referred_by_code)
+  WHERE referred_by_code IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_user_profiles_pro_status ON user_profiles(is_pro, pro_since)
+  WHERE is_pro = true;
+
+-- ─────────────────────────────────────────
+-- 13. HELPER FUNCTION: Récupérer contrat actif
+-- ─────────────────────────────────────────
+CREATE OR REPLACE FUNCTION get_active_contract(
+  p_ambassador_code TEXT,
+  p_at_date DATE DEFAULT CURRENT_DATE
+)
+RETURNS TABLE (
+  contract_id UUID,
+  rate_type TEXT,
+  rate_value NUMERIC,
+  grace_period_days INTEGER
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT ac.id, ac.rate_type, ac.rate_value, ac.grace_period_days
+  FROM ambassador_contracts ac
+  JOIN ambassadors a ON a.id = ac.ambassador_id
+  WHERE a.code = p_ambassador_code
+    AND a.is_active = true
+    AND ac.valid_from <= p_at_date
+    AND (ac.valid_until IS NULL OR ac.valid_until + ac.grace_period_days >= p_at_date)
+  ORDER BY ac.valid_from DESC
+  LIMIT 1;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- ─────────────────────────────────────────
+-- 14. VIEW: Stats ambassadeurs
+-- ─────────────────────────────────────────
+CREATE OR REPLACE VIEW ambassador_stats AS
+SELECT
+  a.code,
+  a.name,
+  a.contact_email,
+  a.is_active,
+
+  -- Compteurs
+  COUNT(DISTINCT up.user_email) FILTER (WHERE up.referred_by_code = a.code)
+    as total_referrals,
+  COUNT(DISTINCT up.user_email) FILTER (WHERE up.referred_by_code = a.code AND up.is_pro = false)
+    as free_users,
+  COUNT(DISTINCT up.user_email) FILTER (WHERE up.referred_by_code = a.code AND up.is_pro = true)
+    as pro_users,
+
+  -- Commission estimée (mois en cours)
+  (
+    SELECT
+      CASE
+        WHEN ac.rate_type = 'percentage' THEN
+          COUNT(DISTINCT up2.user_email) * 5.00 * (ac.rate_value / 100)
+        WHEN ac.rate_type = 'fixed' THEN
+          COUNT(DISTINCT up2.user_email) * ac.rate_value
+        ELSE 0
+      END
+    FROM user_profiles up2
+    CROSS JOIN LATERAL get_active_contract(a.code, CURRENT_DATE) AS ac
+    WHERE up2.referred_by_code = a.code
+      AND up2.is_pro = true
+      AND (up2.pro_until IS NULL OR up2.pro_until >= CURRENT_DATE)
+  ) as estimated_monthly_commission,
+
+  -- Contrat actuel (JSON)
+  (
+    SELECT json_build_object(
+      'rate_type', ac.rate_type,
+      'rate_value', ac.rate_value,
+      'valid_from', ac.valid_from,
+      'valid_until', ac.valid_until,
+      'grace_period_days', ac.grace_period_days
+    )
+    FROM ambassador_contracts ac
+    WHERE ac.ambassador_id = a.id
+    ORDER BY ac.valid_from DESC
+    LIMIT 1
+  ) as current_contract
+
+FROM ambassadors a
+LEFT JOIN user_profiles up ON up.referred_by_code = a.code
+GROUP BY a.id, a.code, a.name, a.contact_email, a.is_active;
 
 -- ─────────────────────────────────────────
 -- FIN DU SCRIPT

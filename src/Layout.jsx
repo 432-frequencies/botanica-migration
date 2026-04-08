@@ -6,6 +6,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import GlobalErrorToast from "@/components/shared/GlobalErrorToast";
 import { ActivePageContext } from "@/lib/ActivePageContext";
 import { useNavHistory } from "@/lib/NavHistory";
+import { feedback } from "@/utils/feedback";
+import { EASING, DURATION } from "@/motion/constants";
+import { getPageTransition, iconBounce } from "@/motion/variants";
 
 // Pages with NO bottom nav AND NO header
 const STANDALONE_PAGES = ["Onboarding", "Pricing", "AdminImport"];
@@ -39,20 +42,20 @@ const PageFallback = () => (
   </div>
 );
 
-// Framer Motion variants for push/pop transitions
+// Tesla-style Framer Motion variants (enhanced with smooth easing)
 const pushVariants = {
   initial:  { x: "100%", opacity: 0 },
-  animate:  { x: 0,      opacity: 1 },
-  exit:     { x: "100%", opacity: 0 },
+  animate:  { x: 0,      opacity: 1, transition: { duration: DURATION.slow, ease: EASING.smooth } },
+  exit:     { x: "-30%", opacity: 0, transition: { duration: DURATION.normal, ease: EASING.smooth } },
 };
 
 const popVariants = {
-  initial:  { x: "-30%", opacity: 0 },
-  animate:  { x: 0,      opacity: 1 },
-  exit:     { x: "100%", opacity: 0 },
+  initial:  { x: "-100%", opacity: 0 },
+  animate:  { x: 0,       opacity: 1, transition: { duration: DURATION.slow, ease: EASING.smooth } },
+  exit:     { x: "30%",   opacity: 0, transition: { duration: DURATION.normal, ease: EASING.smooth } },
 };
 
-const tabTransition = { duration: 0.22, ease: [0.4, 0, 0.2, 1] };
+const tabTransition = { duration: DURATION.normal, ease: EASING.smooth };
 
 export default function Layout({ children, currentPageName }) {
   const isStandalone = STANDALONE_PAGES.includes(currentPageName);
@@ -200,15 +203,20 @@ export default function Layout({ children, currentPageName }) {
             </>
           ) : (
             <>
-              <button
-                onClick={goBack}
+              <motion.button
+                onClick={() => {
+                  feedback('tap', { haptic: true });
+                  goBack();
+                }}
                 aria-label="Go back"
-                className="flex items-center gap-1.5 min-h-[44px] min-w-[44px] pr-4 transition-opacity active:opacity-40"
+                className="flex items-center gap-1.5 min-h-[44px] min-w-[44px] pr-4"
                 style={{ color: "var(--v1v-fg-muted)" }}
+                whileTap={{ scale: 0.96 }}
+                transition={{ duration: DURATION.fast, ease: EASING.snappy }}
               >
                 <ChevronLeft className="w-4 h-4" />
                 <span className="text-xs font-black uppercase tracking-[0.1em]">Retour</span>
-              </button>
+              </motion.button>
               <span
                 className="font-black tracking-[0.15em] text-sm uppercase absolute left-1/2 -translate-x-1/2"
                 style={{ color: "var(--v1v-green)" }}
@@ -245,23 +253,43 @@ export default function Layout({ children, currentPageName }) {
                 <Link
                   key={page}
                   to={createPageUrl(page)}
-                  onClick={() => handleNavClick(page)}
+                  onClick={() => {
+                    feedback('tap', { haptic: true });
+                    handleNavClick(page);
+                  }}
                   aria-label={label}
-                  className="flex flex-col items-center justify-center gap-1 min-h-[48px] min-w-[52px] transition-all duration-150 relative"
+                  className="flex flex-col items-center justify-center gap-1 min-h-[48px] min-w-[52px] relative"
                 >
-                  {isActive && (
-                    <span
-                      className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-0.5"
-                      style={{ background: "var(--v1v-green)", borderRadius: 1 }}
-                    />
-                  )}
-                  <Icon
-                    className="w-[18px] h-[18px]"
-                    style={{
-                      color: isActive ? "var(--v1v-green)" : "rgba(255,255,255,0.28)",
-                      strokeWidth: isActive ? 2 : 1.5,
+                  {/* Active indicator with slide animation */}
+                  <motion.span
+                    className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-0.5"
+                    style={{ background: "var(--v1v-green)", borderRadius: 1 }}
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{
+                      opacity: isActive ? 1 : 0,
+                      scale: isActive ? 1 : 0,
                     }}
+                    transition={{ duration: DURATION.fast, ease: EASING.snappy }}
                   />
+
+                  {/* Icon with bounce on activation */}
+                  <motion.div
+                    animate={isActive ? {
+                      scale: [1, 1.15, 1],
+                      transition: { duration: DURATION.medium, ease: EASING.snappy }
+                    } : { scale: 1 }}
+                  >
+                    <motion.div whileTap={{ scale: 0.9 }}>
+                      <Icon
+                        className="w-[18px] h-[18px]"
+                        style={{
+                          color: isActive ? "var(--v1v-green)" : "rgba(255,255,255,0.28)",
+                          strokeWidth: isActive ? 2 : 1.5,
+                        }}
+                      />
+                    </motion.div>
+                  </motion.div>
+
                   <span
                     className="text-[8px] font-black uppercase tracking-[0.08em]"
                     style={{ color: isActive ? "var(--v1v-green)" : "rgba(255,255,255,0.28)" }}

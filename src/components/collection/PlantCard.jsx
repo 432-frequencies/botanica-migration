@@ -1,4 +1,7 @@
 import { AlertTriangle, Utensils, Target } from "lucide-react";
+import { motion } from "framer-motion";
+import { cardHover } from "@/motion/variants";
+import { useHapticPress } from "@/motion/hooks/useHapticPress";
 
 export default function PlantCard({ plant, onClick }) {
   const rarityStyles = {
@@ -11,39 +14,52 @@ export default function PlantCard({ plant, onClick }) {
   const rs = rarityStyles[plant.rarity] || rarityStyles.commune;
   const lbl = rarityLabels[plant.rarity] || "Commune";
 
+  const handlePress = useHapticPress(() => onClick(plant), 'tap');
+
   return (
-    <div
-      onClick={() => onClick(plant)}
-      className="overflow-hidden cursor-pointer select-none"
+    <motion.div
+      onClick={handlePress}
+      className="overflow-hidden cursor-pointer select-none will-animate"
       style={{
         background:   rs.bg,
         border:       rs.border,
         boxShadow:    rs.glow ? `${rs.glow}, inset 0 1px 0 rgba(255,255,255,0.04)` : "inset 0 1px 0 rgba(255,255,255,0.04)",
         borderRadius: 16,
-        transform:    "translateZ(0)",
-        transition:   "transform 120ms cubic-bezier(0.4,0,0.2,1), opacity 120ms ease",
         WebkitTapHighlightColor: "transparent",
       }}
-      onPointerDown={e => { e.currentTarget.style.transform = "scale(0.965) translateZ(0)"; e.currentTarget.style.opacity = "0.88"; }}
-      onPointerUp={e   => { e.currentTarget.style.transform = "translateZ(0)"; e.currentTarget.style.opacity = "1"; }}
-      onPointerLeave={e => { e.currentTarget.style.transform = "translateZ(0)"; e.currentTarget.style.opacity = "1"; }}
+      variants={cardHover}
+      initial="rest"
+      whileHover="hover"
+      whileTap="tap"
     >
       {/* ── Image zone ── */}
-      <div className="relative w-full" style={{ height: 170 }}>
-        {plant.photo_url ? (
+      <div className="relative w-full" style={{ height: 190 }}>
+        {plant.photo_url && plant.photo_url.trim() !== "" ? (
           <>
             <img
               src={plant.thumbnail_url || plant.photo_url}
               alt={plant.common_name}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full"
+              style={{ objectFit: "cover", objectPosition: "center" }}
               loading="lazy"
               decoding="async"
-              onError={e => { e.currentTarget.style.opacity = "0"; }}
+              onError={e => {
+                console.error('[PlantCard] Failed to load image:', plant.photo_url);
+                e.currentTarget.style.display = "none";
+                e.currentTarget.parentElement.querySelector('.fallback-icon')?.classList.remove('hidden');
+              }}
             />
             <div
               className="absolute inset-0"
               style={{ background: "linear-gradient(to top, rgba(8,16,8,0.80) 0%, rgba(8,16,8,0.15) 45%, transparent 70%)" }}
             />
+            {/* Fallback icon shown if image fails */}
+            <div
+              className="absolute inset-0 flex items-center justify-center fallback-icon hidden"
+              style={{ background: "rgba(0,0,0,0.25)" }}
+            >
+              <Target className="w-14 h-14" style={{ color: rs.scopeColor, opacity: 0.4 }} />
+            </div>
           </>
         ) : (
           <div
@@ -105,6 +121,6 @@ export default function PlantCard({ plant, onClick }) {
           </p>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

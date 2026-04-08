@@ -163,12 +163,23 @@ input:focus, textarea:focus, select:focus {
   z-index: 40;
 }
 
-/* ─── Animations ──────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATIONS (GPU-Accelerated for 60fps Performance)
+   Only use transform, opacity, filter for guaranteed smooth animations
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Loading & Skeletons ─────────────────────────────────────────────────── */
 @keyframes loading {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
 
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.8; }
+}
+
+/* ─── Slide Transitions (GPU: translateY/translateX) ──────────────────────── */
 @keyframes slide-in-bottom {
   from { transform: translateY(100%); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
@@ -184,11 +195,42 @@ input:focus, textarea:focus, select:focus {
   to   { transform: translateX(32px); opacity: 0; }
 }
 
+@keyframes fadeInUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ─── Scale & Pulse (GPU: scale) ──────────────────────────────────────────── */
 @keyframes scanPulse {
   0%, 100% { opacity: 0.5; transform: scale(1); }
   50%       { opacity: 1;   transform: scale(1.04); }
 }
 
+@keyframes buttonPress {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+@keyframes cardBounce {
+  0%   { transform: scale(1); }
+  25%  { transform: scale(1.02); }
+  50%  { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+
+/* ─── Fade (GPU: opacity) ─────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ─── Existing Animations (Preserved) ─────────────────────────────────────── */
 @keyframes cornerBlink {
   0%, 100% { opacity: 0.4; }
   50%       { opacity: 1; }
@@ -210,5 +252,34 @@ input:focus, textarea:focus, select:focus {
   50%       { opacity: 1; }
 }
 
+/* ─── Rotate (GPU: rotate) ────────────────────────────────────────────────── */
+@keyframes spinnerRotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ─── Utility Classes ──────────────────────────────────────────────────────── */
 .slide-in-bottom { animation: slide-in-bottom 0.3s cubic-bezier(0.4,0,0.2,1); }
 .pulse-glow      { animation: pulse-glow 2.4s cubic-bezier(0.4,0,0.6,1) infinite; }
+.fade-in-up      { animation: fadeInUp 0.35s cubic-bezier(0.16,1,0.3,1); }
+.skeleton-pulse  { animation: skeletonPulse 1.4s ease-in-out infinite; }
+
+/* ─── Performance Optimization ─────────────────────────────────────────────── */
+.will-animate {
+  will-change: transform, opacity;
+}
+
+.will-animate-done {
+  will-change: auto;
+}
+
+/* Reduce motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

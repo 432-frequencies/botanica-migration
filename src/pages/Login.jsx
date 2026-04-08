@@ -9,6 +9,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
+  const [ambassadorCode, setAmbassadorCode] = useState('');
+  const [codeValidation, setCodeValidation] = useState({ valid: null, message: '' });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -17,6 +19,26 @@ export default function Login() {
     });
   }, []);
 
+  const validateAmbassadorCode = async (code) => {
+    if (!code || code.trim() === '') {
+      setCodeValidation({ valid: null, message: '' });
+      return;
+    }
+
+    const { data } = await supabase
+      .from('ambassadors')
+      .select('code')
+      .eq('code', code.toUpperCase())
+      .eq('is_active', true)
+      .single();
+
+    if (data) {
+      setCodeValidation({ valid: true, message: '✓ Code valide' });
+    } else {
+      setCodeValidation({ valid: false, message: 'Code invalide' });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -24,6 +46,11 @@ export default function Login() {
     setDone('');
 
     if (mode === 'signup') {
+      // Stocker le code ambassadeur si valide
+      if (codeValidation.valid && ambassadorCode) {
+        localStorage.setItem('pending_ambassador_code', ambassadorCode.toUpperCase());
+      }
+
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) setError(error.message);
       else setDone('Compte créé — tu peux te connecter.');
@@ -68,6 +95,40 @@ export default function Login() {
               required
               style={{ width: '100%', background: 'rgba(57,255,20,0.06)', border: '1px solid rgba(57,255,20,0.3)', color: '#E8E0D0', padding: '12px', fontSize: '14px', outline: 'none', marginBottom: '12px', boxSizing: 'border-box' }}
             />
+            {mode === 'signup' && (
+              <>
+                <input
+                  type="text"
+                  value={ambassadorCode}
+                  onChange={e => {
+                    const code = e.target.value.toUpperCase();
+                    setAmbassadorCode(code);
+                    validateAmbassadorCode(code);
+                  }}
+                  placeholder="Code ambassadeur (optionnel)"
+                  style={{
+                    width: '100%',
+                    background: 'rgba(57,255,20,0.06)',
+                    border: codeValidation.valid === false ? '1px solid #FF4444' : '1px solid rgba(57,255,20,0.3)',
+                    color: '#E8E0D0',
+                    padding: '12px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    marginBottom: '8px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                {codeValidation.message && (
+                  <p style={{
+                    color: codeValidation.valid ? '#39FF14' : '#FF4444',
+                    fontSize: '11px',
+                    marginBottom: '8px'
+                  }}>
+                    {codeValidation.message}
+                  </p>
+                )}
+              </>
+            )}
             {error && <p style={{ color: '#FF4444', fontSize: '12px', marginBottom: '8px' }}>{error}</p>}
             <button
               type="submit"

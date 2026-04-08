@@ -3,6 +3,7 @@ import { supabase } from "@/api/supabaseClient";
 import { getUserProfile } from "@/api/getUserProfile";
 import { Search, Database, Leaf, WifiOff } from "lucide-react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { createPageUrl } from "@/utils";
 import PlantCard from "@/components/collection/PlantCard";
 import PlantDetailModal from "@/components/collection/PlantDetailModal";
@@ -312,7 +313,7 @@ export default function Collection() {
                        {visibleRows.map((row, i) => {
                          const rowIndex = rowStart + i;
                          return (
-                           <div
+                           <motion.div
                              key={rowIndex}
                              className="grid grid-cols-2 gap-3"
                             style={{
@@ -322,11 +323,25 @@ export default function Collection() {
                               right: 0,
                               height: ROW_HEIGHT,
                             }}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                           >
-                            {row.map(plant => (
-                              <PlantCard key={plant.id} plant={plant} onClick={setSelected} onLearnMore={setLearnMore} />
+                            {row.map((plant, idx) => (
+                              <motion.div
+                                key={plant.id}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{
+                                  duration: 0.25,
+                                  delay: idx * 0.05,
+                                  ease: [0.4, 0, 0.2, 1]
+                                }}
+                              >
+                                <PlantCard plant={plant} onClick={setSelected} onLearnMore={setLearnMore} />
+                              </motion.div>
                             ))}
-                          </div>
+                          </motion.div>
                         );
                       })}
                     </div>

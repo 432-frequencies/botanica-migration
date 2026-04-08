@@ -13,28 +13,59 @@ export async function saveDiscovery(data) {
     const userEmail = authUser.email;
     const today = new Date().toISOString().split('T')[0];
 
+    // Ensure common_name is never null/empty (DB constraint)
+    const commonName = data.common_name?.trim() || 'Spécimen observé';
+
     // Vérifie si c'est une nouvelle espèce pour cet utilisateur
     const { count } = await supabase
       .from('plant_discoveries')
       .select('id', { count: 'exact', head: true })
       .eq('user_email', userEmail)
-      .eq('common_name', data.common_name || '');
+      .eq('common_name', commonName);
 
     const isNewSpecies = count === 0;
-    const xpEarned = isNewSpecies ? 10 : 5;
+    // Système XP amélioré : nouvelle espèce = 15 XP, duplicate = 8 XP
+    const xpEarned = isNewSpecies ? 15 : 8;
 
     // Insère la découverte
-    const { error: insertError } = await supabase.from('plant_discoveries').insert({
+    const insertPayload = {
       user_email: userEmail,
       category: data.category || 'plant',
-      common_name: data.common_name || null,
-      scientific_name: data.scientific_name || null,
+      common_name: commonName,
+      scientific_name: data.scientific_name?.trim() || null,
+      family: data.family?.trim() || null,
       photo_url: data.photo_url || null,
+      rarity: data.rarity || 'commune',
+      is_edible: data.is_edible ?? false,
+      is_toxic: data.is_toxic ?? false,
+      confidence: data.confidence || null,
+      latitude: data.latitude || null,
+      longitude: data.longitude || null,
+      description: data.description?.trim() || null,
+      habitat: data.habitat?.trim() || null,
+      ecological_role: data.ecological_role?.trim() || null,
+      biodiversity_importance: data.biodiversity_importance?.trim() || null,
+      edibility_details: data.edibility_details?.trim() || null,
+      medicinal_uses: data.medicinal_uses?.trim() || null,
+      anecdote: data.anecdote?.trim() || null,
       points_earned: xpEarned,
       discovered_date: today,
-    });
+    };
 
-    if (insertError) return { error: insertError.message };
+    console.log('[saveDiscovery] Inserting discovery:', { userEmail, commonName, category: insertPayload.category });
+
+    const { data: insertedDiscovery, error: insertError } = await supabase
+      .from('plant_discoveries')
+      .insert(insertPayload)
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('[saveDiscovery] Insert error:', insertError);
+      return { error: insertError.message };
+    }
+
+    console.log('[saveDiscovery] Successfully inserted discovery:', insertedDiscovery?.id);
 
     // Met à jour le profil (best-effort)
     const { data: profile } = await supabase

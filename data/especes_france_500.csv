@@ -1,0 +1,501 @@
+﻿common_name,scientific_name,latitude,longitude,category,rarity
+Coquelicot,Papaver rhoeas,48.4047,2.7002,plant,common
+Bleuet des champs,Centaurea cyanus,46.706,1.147,plant,uncommon
+Marguerite commune,Leucanthemum vulgare,48.4047,2.7002,plant,common
+Pissenlit officinal,Taraxacum officinale,48.4047,2.7002,plant,common
+Ortie dioïque,Urtica dioica,48.4047,2.7002,plant,common
+Achillée millefeuille,Achillea millefolium,48.4047,2.7002,plant,common
+Plantain lancéolé,Plantago lanceolata,48.4047,2.7002,plant,common
+Millepertuis perforé,Hypericum perforatum,43.209,5.434,plant,common
+Lierre grimpant,Hedera helix,48.4047,2.7002,plant,common
+Trèfle des prés,Trifolium pratense,46.706,1.147,plant,common
+Trèfle blanc,Trifolium repens,48.4047,2.7002,plant,common
+Lotier corniculé,Lotus corniculatus,46.706,1.147,plant,common
+Luzerne lupuline,Medicago lupulina,48.4047,2.7002,plant,common
+Primevère officinale,Primula veris,47.166,4.084,plant,common
+Primevère acaule,Primula vulgaris,48.012,-2.171,plant,common
+Anémone des bois,Anemone nemorosa,48.4047,2.7002,plant,common
+Ficaire fausse-renoncule,Ficaria verna,48.4047,2.7002,plant,common
+Renoncule âcre,Ranunculus acris,46.776,6.083,plant,common
+Reine-des-prés,Filipendula ulmaria,46.776,6.083,plant,common
+Consoude officinale,Symphytum officinale,48.259,7.454,plant,common
+Salicaire commune,Lythrum salicaria,43.522,4.427,plant,common
+Iris des marais,Iris pseudacorus,43.522,4.427,plant,common
+Jonc épars,Juncus effusus,46.706,1.147,plant,common
+Roseau commun,Phragmites australis,43.522,4.427,plant,common
+Massette à larges feuilles,Typha latifolia,43.522,4.427,plant,common
+Menthe aquatique,Mentha aquatica,46.706,1.147,plant,common
+Nénuphar blanc,Nymphaea alba,46.706,1.147,plant,common
+Potamot nageant,Potamogeton natans,46.706,1.147,plant,common
+Callune commune,Calluna vulgaris,48.012,-2.171,plant,common
+Bruyère cendrée,Erica cinerea,48.012,-2.171,plant,common
+Bruyère tétralix,Erica tetralix,48.012,-2.171,plant,uncommon
+Ajonc d'Europe,Ulex europaeus,48.012,-2.171,plant,common
+Genêt à balais,Cytisus scoparius,48.012,-2.171,plant,common
+Digitale pourpre,Digitalis purpurea,48.012,-2.171,plant,common
+Chèvrefeuille des bois,Lonicera periclymenum,48.012,-2.171,plant,common
+Muguet,Convallaria majalis,48.4047,2.7002,plant,common
+Sceau de Salomon,Polygonatum multiflorum,48.4047,2.7002,plant,uncommon
+Violette odorante,Viola odorata,48.4047,2.7002,plant,common
+Oxalis petite oseille,Oxalis acetosella,48.073,7.014,plant,common
+Fougère aigle,Pteridium aquilinum,48.012,-2.171,plant,common
+Polypode commun,Polypodium vulgare,48.073,7.014,plant,common
+Aspérule odorante,Galium odoratum,48.4047,2.7002,plant,common
+Sureau yèble,Sambucus ebulus,44.244,3.582,plant,common
+Eupatoire chanvrine,Eupatorium cannabinum,43.522,4.427,plant,common
+Centaurée jacée,Centaurea jacea,47.166,4.084,plant,common
+Origan commun,Origanum vulgare,44.244,3.582,plant,common
+Thym serpolet,Thymus serpyllum,46.776,6.083,plant,common
+Serpolet des Alpes,Thymus praecox,45.386,6.723,plant,uncommon
+Sauge des prés,Salvia pratensis,46.776,6.083,plant,common
+Sauge officinale,Salvia officinalis,43.209,5.434,plant,uncommon
+Lavande vraie,Lavandula angustifolia,44.173,5.278,plant,common
+Lavande aspic,Lavandula latifolia,43.209,5.434,plant,common
+Romarin officinal,Salvia rosmarinus,43.209,5.434,plant,common
+Immortelle d'Italie,Helichrysum italicum,43.287,6.467,plant,common
+Ciste cotonneux,Cistus albidus,43.209,5.434,plant,common
+Ciste de Montpellier,Cistus monspeliensis,43.287,6.467,plant,common
+Ciste à feuilles de sauge,Cistus salviifolius,43.287,6.467,plant,common
+Asphodèle blanc,Asphodelus albus,44.244,3.582,plant,uncommon
+Aphyllanthe de Montpellier,Aphyllanthes monspeliensis,43.209,5.434,plant,common
+Genêt scorpion,Genista scorpius,44.244,3.582,plant,uncommon
+Coronille naine,Coronilla minima,43.209,5.434,plant,uncommon
+Euphorbe characias,Euphorbia characias,43.209,5.434,plant,common
+Euphorbe cyprès,Euphorbia cyparissias,46.776,6.083,plant,common
+Globulaire alypum,Globularia alypum,43.209,5.434,plant,uncommon
+Germandrée petit-chêne,Teucrium chamaedrys,44.173,5.278,plant,common
+Hélianthème commun,Helianthemum nummularium,46.776,6.083,plant,common
+Hélianthème des Apennins,Helianthemum apenninum,43.209,5.434,plant,uncommon
+Aster maritime,Tripolium pannonicum,43.522,4.427,plant,uncommon
+Saladelle commune,Limonium vulgare,43.522,4.427,plant,common
+Obione faux-pourpier,Halimione portulacoides,43.522,4.427,plant,common
+Soude brûlée,Suaeda vera,43.522,4.427,plant,common
+Salicorne d'Europe,Salicornia europaea,43.522,4.427,plant,common
+Soude maritime,Salsola soda,43.522,4.427,plant,uncommon
+Criste marine,Crithmum maritimum,48.669,-4.329,plant,common
+Armérie maritime,Armeria maritima,48.669,-4.329,plant,common
+Oyat,Ammophila arenaria,44.589,-1.214,plant,common
+Liseron soldanelle,Calystegia soldanella,44.589,-1.214,plant,common
+Panicaut maritime,Eryngium maritimum,44.589,-1.214,plant,uncommon
+Euphorbe maritime,Euphorbia paralias,44.589,-1.214,plant,common
+Giroflée des dunes,Matthiola sinuata,44.589,-1.214,plant,uncommon
+Lis maritime,Pancratium maritimum,43.522,4.427,plant,rare
+Silène maritime,Silene uniflora,48.669,-4.329,plant,common
+Silène dioïque,Silene dioica,48.012,-2.171,plant,common
+Compagnon blanc,Silene latifolia,48.4047,2.7002,plant,common
+Campanule raiponce,Campanula rapunculus,48.4047,2.7002,plant,uncommon
+Campanule agglomérée,Campanula glomerata,46.776,6.083,plant,uncommon
+Campanule barbue,Campanula barbata,45.386,6.723,plant,uncommon
+Gentiane jaune,Gentiana lutea,44.244,3.582,plant,uncommon
+Gentiane acaule,Gentiana acaulis,44.149,6.949,plant,uncommon
+Gentiane printanière,Gentiana verna,44.149,6.949,plant,rare
+Arnica des montagnes,Arnica montana,48.073,7.014,plant,uncommon
+Edelweiss,Leontopodium alpinum,45.386,6.723,plant,rare
+Génépi noir,Artemisia genipi,44.149,6.949,plant,rare
+Génépi laineux,Artemisia umbelliformis,44.149,6.949,plant,rare
+Joubarbe des toits,Sempervivum tectorum,48.073,7.014,plant,common
+Joubarbe à toile d'araignée,Sempervivum arachnoideum,44.149,6.949,plant,uncommon
+Orpin âcre,Sedum acre,43.209,5.434,plant,common
+Orpin blanc,Sedum album,43.209,5.434,plant,common
+Orpin de Nice,Sedum sediforme,43.209,5.434,plant,common
+Saxifrage paniculée,Saxifraga paniculata,44.149,6.949,plant,uncommon
+Saxifrage faux-aïzoon,Saxifraga aizoides,44.149,6.949,plant,uncommon
+Iris nain,Iris lutescens,43.209,5.434,plant,common
+Pivoine officinale,Paeonia officinalis,44.244,3.582,plant,rare
+Pivoine de Corse,Paeonia corsica,42.425,8.912,plant,rare
+Hellébore fétide,Helleborus foetidus,44.244,3.582,plant,common
+Hellébore vert,Helleborus viridis,46.776,6.083,plant,uncommon
+Nigelle de France,Nigella gallica,44.244,3.582,plant,rare
+Adonis d'été,Adonis aestivalis,44.173,5.278,plant,rare
+Adonis de printemps,Adonis vernalis,46.776,6.083,plant,rare
+Orchis bouffon,Anacamptis morio,47.166,4.084,plant,uncommon
+Orchis pyramidal,Anacamptis pyramidalis,46.776,6.083,plant,common
+Orchis mâle,Orchis mascula,48.4047,2.7002,plant,common
+Orchis militaire,Orchis militaris,46.776,6.083,plant,uncommon
+Ophrys abeille,Ophrys apifera,43.209,5.434,plant,common
+Ophrys araignée,Ophrys sphegodes,43.209,5.434,plant,uncommon
+Ophrys miroir,Ophrys speculum,43.209,5.434,plant,rare
+Sabot de Vénus,Cypripedium calceolus,46.776,6.083,plant,very_rare
+Spiranthe d'automne,Spiranthes spiralis,44.173,5.278,plant,uncommon
+Épipactis helléborine,Epipactis helleborine,48.4047,2.7002,plant,common
+Dactylorhize tacheté,Dactylorhiza maculata,48.073,7.014,plant,uncommon
+Dactylorhize incarnat,Dactylorhiza incarnata,46.706,1.147,plant,rare
+Drosera à feuilles rondes,Drosera rotundifolia,48.073,7.014,plant,rare
+Grassette commune,Pinguicula vulgaris,46.776,6.083,plant,uncommon
+Rossolis intermédiaire,Drosera intermedia,44.589,-1.214,plant,rare
+Linaigrette vaginée,Eriophorum vaginatum,48.073,7.014,plant,uncommon
+Canneberge,Vaccinium oxycoccos,46.776,6.083,plant,rare
+Airelle des marais,Vaccinium uliginosum,48.073,7.014,plant,uncommon
+Myrtille,Vaccinium myrtillus,48.073,7.014,plant,common
+Airelle rouge,Vaccinium vitis-idaea,48.073,7.014,plant,common
+Myrte commun,Myrtus communis,42.425,8.912,plant,uncommon
+Cyclamen de Naples,Cyclamen hederifolium,43.287,6.467,plant,common
+Cyclamen des Baléares,Cyclamen balearicum,43.287,6.467,plant,rare
+Nivéole d'été,Leucojum aestivum,43.522,4.427,plant,uncommon
+Narcisse des poètes,Narcissus poeticus,46.776,6.083,plant,uncommon
+Jonquille,Narcissus pseudonarcissus,48.073,7.014,plant,common
+Lis martagon,Lilium martagon,46.776,6.083,plant,rare
+Lis pompon,Lilium pomponium,44.149,6.949,plant,very_rare
+Tulipe australe,Tulipa sylvestris subsp. australis,44.173,5.278,plant,rare
+Gagée jaune,Gagea lutea,48.259,7.454,plant,uncommon
+Fritillaire pintade,Fritillaria meleagris,48.259,7.454,plant,rare
+Chêne pédonculé,Quercus robur,48.4047,2.7002,tree,common
+Chêne sessile,Quercus petraea,48.4047,2.7002,tree,common
+Chêne pubescent,Quercus pubescens,44.244,3.582,tree,common
+Chêne vert,Quercus ilex,43.209,5.434,tree,common
+Chêne liège,Quercus suber,43.287,6.467,tree,uncommon
+Chêne tauzin,Quercus pyrenaica,48.012,-2.171,tree,uncommon
+Chêne kermès,Quercus coccifera,43.209,5.434,tree,common
+Hêtre commun,Fagus sylvatica,48.4047,2.7002,tree,common
+Charme commun,Carpinus betulus,48.4047,2.7002,tree,common
+Frêne élevé,Fraxinus excelsior,46.776,6.083,tree,common
+Frêne à fleurs,Fraxinus ornus,43.209,5.434,tree,uncommon
+Aulne glutineux,Alnus glutinosa,46.706,1.147,tree,common
+Aulne blanc,Alnus incana,46.776,6.083,tree,uncommon
+Aulne odorant,Alnus alnobetula subsp. suaveolens,41.796,9.223,tree,rare
+Bouleau verruqueux,Betula pendula,47.166,4.084,tree,common
+Bouleau pubescent,Betula pubescens,48.073,7.014,tree,uncommon
+Peuplier tremble,Populus tremula,48.4047,2.7002,tree,common
+Peuplier noir,Populus nigra,43.522,4.427,tree,uncommon
+Peuplier blanc,Populus alba,48.259,7.454,tree,common
+Saule blanc,Salix alba,48.259,7.454,tree,common
+Saule marsault,Salix caprea,47.166,4.084,tree,common
+Saule à oreillettes,Salix aurita,48.073,7.014,tree,uncommon
+Érable sycomore,Acer pseudoplatanus,46.776,6.083,tree,common
+Érable champêtre,Acer campestre,48.4047,2.7002,tree,common
+Érable plane,Acer platanoides,46.776,6.083,tree,common
+Orme champêtre,Ulmus minor,44.244,3.582,tree,uncommon
+Orme lisse,Ulmus laevis,48.259,7.454,tree,rare
+Orme de montagne,Ulmus glabra,46.776,6.083,tree,uncommon
+Tilleul à petites feuilles,Tilia cordata,48.4047,2.7002,tree,common
+Tilleul à grandes feuilles,Tilia platyphyllos,46.776,6.083,tree,common
+Merisier,Prunus avium,48.4047,2.7002,tree,common
+Cerisier de Sainte-Lucie,Prunus mahaleb,44.173,5.278,tree,uncommon
+Prunellier,Prunus spinosa,48.4047,2.7002,tree,common
+Poirier sauvage,Pyrus pyraster,44.244,3.582,tree,uncommon
+Pommier sauvage,Malus sylvestris,48.4047,2.7002,tree,uncommon
+Cormier,Sorbus domestica,44.173,5.278,tree,rare
+Sorbier des oiseleurs,Sorbus aucuparia,48.073,7.014,tree,common
+Alisier torminal,Sorbus torminalis,48.4047,2.7002,tree,uncommon
+Alisier blanc,Sorbus aria,44.173,5.278,tree,uncommon
+Sorbier des Alpes,Sorbus chamaemespilus,44.149,6.949,tree,rare
+Noisetier,Corylus avellana,48.4047,2.7002,tree,common
+If commun,Taxus baccata,46.776,6.083,tree,uncommon
+Buis commun,Buxus sempervirens,44.244,3.582,tree,common
+Arbousier,Arbutus unedo,43.287,6.467,tree,common
+Laurier-tin,Viburnum tinus,43.209,5.434,tree,common
+Cornouiller sanguin,Cornus sanguinea,48.4047,2.7002,tree,common
+Cornouiller mâle,Cornus mas,44.244,3.582,tree,uncommon
+Viorne lantane,Viburnum lantana,46.776,6.083,tree,common
+Viorne obier,Viburnum opulus,48.259,7.454,tree,common
+Fusain d'Europe,Euonymus europaeus,48.4047,2.7002,tree,common
+Nerprun purgatif,Rhamnus cathartica,46.776,6.083,tree,uncommon
+Bourdaine,Frangula alnus,48.012,-2.171,tree,common
+Troène commun,Ligustrum vulgare,48.4047,2.7002,tree,common
+Houx commun,Ilex aquifolium,48.012,-2.171,tree,common
+Genévrier commun,Juniperus communis,46.776,6.083,tree,common
+Genévrier cade,Juniperus oxycedrus,43.209,5.434,tree,common
+Genévrier thurifère,Juniperus thurifera,44.244,3.582,tree,rare
+Pin sylvestre,Pinus sylvestris,48.073,7.014,tree,common
+Pin maritime,Pinus pinaster,44.589,-1.214,tree,common
+Pin d'Alep,Pinus halepensis,43.209,5.434,tree,common
+Pin pignon,Pinus pinea,43.522,4.427,tree,uncommon
+Pin à crochets,Pinus uncinata,44.149,6.949,tree,uncommon
+Pin laricio de Corse,Pinus nigra subsp. laricio,41.796,9.223,tree,uncommon
+Pin de Salzmann,Pinus nigra subsp. salzmannii,44.244,3.582,tree,rare
+Sapin pectiné,Abies alba,46.776,6.083,tree,common
+Épicéa commun,Picea abies,48.073,7.014,tree,common
+Mélèze d'Europe,Larix decidua,44.149,6.949,tree,common
+Genévrier de Phénicie,Juniperus phoenicea,43.209,5.434,tree,uncommon
+Micocoulier de Provence,Celtis australis,43.209,5.434,tree,uncommon
+Olivier sauvage,Olea europaea var. sylvestris,43.209,5.434,tree,uncommon
+Caroubier,Ceratonia siliqua,43.209,5.434,tree,rare
+Frêne oxyphylle,Fraxinus angustifolia,43.522,4.427,tree,uncommon
+Aulne vert,Alnus viridis,44.149,6.949,tree,uncommon
+Genêt de Lobel,Genista lobelii,44.149,6.949,tree,rare
+Rhododendron ferrugineux,Rhododendron ferrugineum,44.149,6.949,tree,common
+Genêt poilu,Genista pilosa,48.073,7.014,tree,uncommon
+Saule herbacé,Salix herbacea,45.386,6.723,tree,rare
+Saule des Alpes,Salix alpina,45.386,6.723,tree,uncommon
+Bouleau nain,Betula nana,46.776,6.083,tree,very_rare
+Daphné lauréole,Daphne laureola,44.244,3.582,tree,uncommon
+Cèpe de Bordeaux,Boletus edulis,48.073,7.014,fungus,common
+Cèpe bronzé,Boletus aereus,44.244,3.582,fungus,uncommon
+Cèpe d'été,Boletus reticulatus,44.244,3.582,fungus,common
+Cèpe des pins,Boletus pinophilus,48.073,7.014,fungus,uncommon
+Bolet bai,Imleria badia,48.073,7.014,fungus,common
+Bolet élégant,Suillus grevillei,44.149,6.949,fungus,common
+Bolet granulé,Suillus granulatus,44.589,-1.214,fungus,common
+Bolet des bouviers,Suillus bovinus,44.589,-1.214,fungus,common
+Bolet à beau pied,Caloboletus calopus,46.776,6.083,fungus,uncommon
+Bolet fissuré,Xerocomellus chrysenteron,48.4047,2.7002,fungus,common
+Bolet pulvérulent,Cyanoboletus pulverulentus,44.244,3.582,fungus,uncommon
+Bolet orangé,Leccinum aurantiacum,48.073,7.014,fungus,uncommon
+Bolet rude,Leccinum scabrum,47.166,4.084,fungus,common
+Bolet blafard,Suillellus luridus,44.244,3.582,fungus,uncommon
+Bolet satan,Boletus satanas,44.173,5.278,fungus,rare
+Girolle,Cantharellus cibarius,48.073,7.014,fungus,common
+Girolle pruineuse,Cantharellus pallens,48.4047,2.7002,fungus,common
+Trompette de la mort,Craterellus cornucopioides,48.073,7.014,fungus,common
+Chanterelle en tube,Craterellus tubaeformis,48.073,7.014,fungus,common
+Pied-de-mouton,Hydnum repandum,48.073,7.014,fungus,common
+Hydne roussissant,Hydnum rufescens,48.4047,2.7002,fungus,common
+Pied bleu,Lepista nuda,48.4047,2.7002,fungus,common
+Coulemelle,Macrolepiota procera,48.4047,2.7002,fungus,common
+Lépiote déguenillée,Chlorophyllum rhacodes,48.4047,2.7002,fungus,common
+Amanite tue-mouches,Amanita muscaria,48.073,7.014,fungus,common
+Amanite phalloïde,Amanita phalloides,48.4047,2.7002,fungus,common
+Amanite citrine,Amanita citrina,48.4047,2.7002,fungus,common
+Amanite rougissante,Amanita rubescens,48.4047,2.7002,fungus,common
+Amanite des Césars,Amanita caesarea,44.244,3.582,fungus,rare
+Amanite panthère,Amanita pantherina,48.4047,2.7002,fungus,uncommon
+Grisette,Amanita vaginata,48.073,7.014,fungus,common
+Amanite épaisse,Amanita excelsa,48.4047,2.7002,fungus,common
+Agaric champêtre,Agaricus campestris,47.166,4.084,fungus,common
+Rosé-des-prés,Agaricus arvensis,47.166,4.084,fungus,common
+Agaric des jachères,Agaricus bernardii,43.522,4.427,fungus,uncommon
+Coprin chevelu,Coprinus comatus,48.4047,2.7002,fungus,common
+Coprin noir d'encre,Coprinopsis atramentaria,48.4047,2.7002,fungus,common
+Morille commune,Morchella esculenta,48.259,7.454,fungus,uncommon
+Morille conique,Morchella elata,46.776,6.083,fungus,uncommon
+Gyromitre en turban,Gyromitra infula,48.073,7.014,fungus,rare
+Pézize orangée,Aleuria aurantia,48.4047,2.7002,fungus,common
+Oreille-de-Judas,Auricularia auricula-judae,48.259,7.454,fungus,common
+Langue-de-bœuf,Fistulina hepatica,48.4047,2.7002,fungus,uncommon
+Polypore soufré,Laetiporus sulphureus,48.4047,2.7002,fungus,common
+Tramète versicolore,Trametes versicolor,48.4047,2.7002,fungus,common
+Amadouvier,Fomes fomentarius,48.073,7.014,fungus,common
+Ganoderme luisant,Ganoderma lucidum,48.4047,2.7002,fungus,uncommon
+Pleurote en huître,Pleurotus ostreatus,48.4047,2.7002,fungus,common
+Schizophylle commun,Schizophyllum commune,43.209,5.434,fungus,common
+Clavaire crépue,Sparassis crispa,44.589,-1.214,fungus,uncommon
+Phellodon noir,Phellodon niger,46.776,6.083,fungus,rare
+Hérisson coralloïde,Hericium coralloides,46.776,6.083,fungus,rare
+Hydne hérisson,Hericium erinaceus,48.4047,2.7002,fungus,rare
+Clitocybe nébuleux,Clitocybe nebularis,48.4047,2.7002,fungus,common
+Tricholome prétentieux,Tricholoma portentosum,44.589,-1.214,fungus,common
+Tricholome équestre,Tricholoma equestre,44.589,-1.214,fungus,uncommon
+Tricholome de la Saint-Georges,Calocybe gambosa,47.166,4.084,fungus,common
+Tricholome terreux,Tricholoma terreum,44.589,-1.214,fungus,common
+Tricholome soufré,Tricholoma sulphureum,48.4047,2.7002,fungus,uncommon
+Lactaire délicieux,Lactarius deliciosus,44.589,-1.214,fungus,common
+Lactaire sanguin,Lactarius sanguifluus,43.209,5.434,fungus,uncommon
+Lactaire saumoné,Lactarius salmonicolor,46.776,6.083,fungus,uncommon
+Lactaire poivré,Lactifluus piperatus,48.4047,2.7002,fungus,common
+Lactaire à lait jaune,Lactarius chrysorrheus,44.244,3.582,fungus,uncommon
+Lactaire calme,Lactarius quietus,48.4047,2.7002,fungus,common
+Russule charbonnière,Russula cyanoxantha,48.4047,2.7002,fungus,common
+Russule émétique,Russula emetica,48.073,7.014,fungus,common
+Russule verdoyante,Russula virescens,44.244,3.582,fungus,uncommon
+Russule comestible,Russula vesca,48.4047,2.7002,fungus,common
+Russule ochracée,Russula ochroleuca,48.073,7.014,fungus,common
+Entolome livide,Entoloma sinuatum,48.4047,2.7002,fungus,uncommon
+Cortinaire couleur de rocou,Cortinarius orellanus,46.776,6.083,fungus,rare
+Cortinaire violet,Cortinarius violaceus,48.073,7.014,fungus,rare
+Cortinaire triomphant,Cortinarius triumphans,46.776,6.083,fungus,uncommon
+Clitopile petite prune,Clitopilus prunulus,48.4047,2.7002,fungus,common
+Hygrophore perroquet,Gliophorus psittacinus,46.776,6.083,fungus,uncommon
+Hygrophore blanc d'ivoire,Cuphophyllus virgineus,46.776,6.083,fungus,common
+Hygrophore des prés,Cuphophyllus pratensis,47.166,4.084,fungus,common
+Hygrocybe écarlate,Hygrocybe coccinea,46.776,6.083,fungus,uncommon
+Hygrocybe conique,Hygrocybe conica,47.166,4.084,fungus,common
+Géastre quadruple,Geastrum quadrifidum,48.073,7.014,fungus,rare
+Satyre puant,Phallus impudicus,48.4047,2.7002,fungus,common
+Clavaire en massue,Clavariadelphus pistillaris,46.776,6.083,fungus,rare
+Doigts de mort,Xylaria polymorpha,48.4047,2.7002,fungus,common
+Helvelle crépue,Helvella crispa,48.4047,2.7002,fungus,uncommon
+Helvelle lacuneuse,Helvella lacunosa,48.073,7.014,fungus,uncommon
+Pézize veinée,Disciotis venosa,46.776,6.083,fungus,uncommon
+Bolet radicant,Caloboletus radicans,44.173,5.278,fungus,uncommon
+Paxille enroulé,Paxillus involutus,48.4047,2.7002,fungus,common
+Gomphide glutineux,Gomphidius glutinosus,46.776,6.083,fungus,uncommon
+Gomphide rutilant,Chroogomphus rutilus,44.589,-1.214,fungus,uncommon
+Clitocybe inversé,Lepista flaccida,48.4047,2.7002,fungus,common
+Marasme des oréades,Marasmius oreades,47.166,4.084,fungus,common
+Collybie à pied velouté,Flammulina velutipes,48.259,7.454,fungus,common
+Laccaire améthyste,Laccaria amethystina,48.073,7.014,fungus,common
+Laccaire laqué,Laccaria laccata,48.4047,2.7002,fungus,common
+Vesse-de-loup perlée,Lycoperdon perlatum,48.4047,2.7002,fungus,common
+Scléroderme citrin,Scleroderma citrinum,48.4047,2.7002,fungus,common
+Truffe noire,Tuber melanosporum,44.173,5.278,fungus,rare
+Abeille domestique,Apis mellifera,48.4047,2.7002,insect,common
+Bourdon terrestre,Bombus terrestris,48.4047,2.7002,insect,common
+Bourdon des pierres,Bombus lapidarius,48.4047,2.7002,insect,common
+Osmie rousse,Osmia bicornis,48.4047,2.7002,insect,common
+Mégachile coupeuse de feuilles,Megachile centuncularis,48.4047,2.7002,insect,common
+Xylocope violet,Xylocopa violacea,44.244,3.582,insect,common
+Syrphe ceinturé,Episyrphus balteatus,48.4047,2.7002,insect,common
+Volucelle zonée,Volucella zonaria,44.244,3.582,insect,uncommon
+Coccinelle à sept points,Coccinella septempunctata,48.4047,2.7002,insect,common
+Coccinelle asiatique,Harmonia axyridis,48.4047,2.7002,insect,common
+Gendarme,Pyrrhocoris apterus,48.4047,2.7002,insect,common
+Punaise verte,Palomena prasina,48.4047,2.7002,insect,common
+Punaise arlequin,Graphosoma italicum,44.244,3.582,insect,common
+Lucane cerf-volant,Lucanus cervus,48.4047,2.7002,insect,uncommon
+Petite biche,Dorcus parallelipipedus,48.4047,2.7002,insect,common
+Grand capricorne,Cerambyx cerdo,44.244,3.582,insect,rare
+Rosalie des Alpes,Rosalia alpina,46.776,6.083,insect,rare
+Capricorne musqué,Aromia moschata,48.259,7.454,insect,uncommon
+Hanneton commun,Melolontha melolontha,48.4047,2.7002,insect,common
+Cétoine dorée,Cetonia aurata,48.4047,2.7002,insect,common
+Orycte nasicorne,Oryctes nasicornis,48.4047,2.7002,insect,uncommon
+Carabe doré,Carabus auratus,47.166,4.084,insect,common
+Carabe à reflet d'or,Carabus auronitens,48.073,7.014,insect,common
+Dytique marginal,Dytiscus marginalis,46.706,1.147,insect,common
+Hydrophile noir,Hydrophilus piceus,46.706,1.147,insect,uncommon
+Grillon champêtre,Gryllus campestris,47.166,4.084,insect,common
+Courtilière,Gryllotalpa gryllotalpa,48.259,7.454,insect,rare
+Mante religieuse,Mantis religiosa,43.209,5.434,insect,common
+Criquet italien,Calliptamus italicus,43.209,5.434,insect,common
+Criquet jacasseur,Chorthippus biguttulus,47.166,4.084,insect,common
+Oedipode turquoise,Oedipoda caerulescens,43.209,5.434,insect,common
+Decticelle cendrée,Pholidoptera griseoaptera,48.4047,2.7002,insect,common
+Sauterelle ponctuée,Leptophyes punctatissima,48.4047,2.7002,insect,common
+Phanéroptère méridional,Phaneroptera nana,43.209,5.434,insect,common
+Saga pédo,Saga pedo,44.244,3.582,insect,rare
+Cigale grise,Cicada orni,43.209,5.434,insect,common
+Cigale rouge,Tibicina haematodes,44.244,3.582,insect,uncommon
+Anax empereur,Anax imperator,46.706,1.147,insect,common
+Aeschne bleue,Aeshna cyanea,46.706,1.147,insect,common
+Aeschne printanière,Brachytron pratense,46.706,1.147,insect,uncommon
+Libellule déprimée,Libellula depressa,46.706,1.147,insect,common
+Orthétrum réticulé,Orthetrum cancellatum,46.706,1.147,insect,common
+Sympétrum rouge sang,Sympetrum sanguineum,46.706,1.147,insect,common
+Cordulie bronzée,Cordulia aenea,46.706,1.147,insect,common
+Cordulie splendide,Macromia splendens,44.244,3.582,insect,rare
+Gomphe à pinces,Onychogomphus forcipatus,44.244,3.582,insect,uncommon
+Leucorrhine à large queue,Leucorrhinia caudalis,46.706,1.147,insect,rare
+Agrion élégant,Ischnura elegans,46.706,1.147,insect,common
+Caloptéryx vierge,Calopteryx virgo,46.776,6.083,insect,common
+Caloptéryx éclatant,Calopteryx splendens,48.259,7.454,insect,common
+Naïade aux yeux bleus,Erythromma najas,46.706,1.147,insect,uncommon
+Agrion de Mercure,Coenagrion mercuriale,43.522,4.427,insect,rare
+Citron,Gonepteryx rhamni,48.4047,2.7002,insect,common
+Piéride du chou,Pieris brassicae,48.4047,2.7002,insect,common
+Piéride de la rave,Pieris rapae,48.4047,2.7002,insect,common
+Aurore,Anthocharis cardamines,48.4047,2.7002,insect,common
+Belle-Dame,Vanessa cardui,43.522,4.427,insect,common
+Vulcain,Vanessa atalanta,48.4047,2.7002,insect,common
+Paon-du-jour,Aglais io,48.4047,2.7002,insect,common
+Petite tortue,Aglais urticae,48.073,7.014,insect,common
+Robert-le-diable,Polygonia c-album,48.4047,2.7002,insect,common
+Sylvain azuré,Limenitis reducta,44.244,3.582,insect,uncommon
+Grand sylvain,Limenitis populi,47.166,4.084,insect,rare
+Morio,Nymphalis antiopa,47.166,4.084,insect,uncommon
+Tabac d'Espagne,Argynnis paphia,48.4047,2.7002,insect,common
+Petit nacré,Issoria lathonia,43.209,5.434,insect,common
+Demi-deuil,Melanargia galathea,47.166,4.084,insect,common
+Tristan,Aphantopus hyperantus,47.166,4.084,insect,common
+Myrtil,Maniola jurtina,48.4047,2.7002,insect,common
+Procris,Coenonympha pamphilus,48.4047,2.7002,insect,common
+Fadet des garrigues,Coenonympha dorus,43.209,5.434,insect,uncommon
+Fadet des laîches,Coenonympha tullia,48.073,7.014,insect,rare
+Cuivré commun,Lycaena phlaeas,48.4047,2.7002,insect,common
+Cuivré des marais,Lycaena dispar,43.522,4.427,insect,rare
+Cuivré de la bistorte,Lycaena helle,46.776,6.083,insect,rare
+Azuré commun,Polyommatus icarus,48.4047,2.7002,insect,common
+Azuré du trèfle,Cyaniris semiargus,46.776,6.083,insect,common
+Azuré du serpolet,Phengaris arion,46.776,6.083,insect,rare
+Azuré des mouillères,Phengaris alcon,46.776,6.083,insect,rare
+Azuré de la sanguisorbe,Phengaris teleius,46.776,6.083,insect,very_rare
+Azuré de la croisette,Phengaris rebeli,44.149,6.949,insect,very_rare
+Flambé,Iphiclides podalirius,43.209,5.434,insect,common
+Machaon,Papilio machaon,43.522,4.427,insect,common
+Apollon,Parnassius apollo,44.149,6.949,insect,rare
+Semi-apollon,Parnassius mnemosyne,46.776,6.083,insect,rare
+Damier de la succise,Euphydryas aurinia,46.776,6.083,insect,rare
+Damier du frêne,Euphydryas maturna,48.259,7.454,insect,very_rare
+Mélitée orangée,Melitaea didyma,43.209,5.434,insect,uncommon
+Mélitée du plantain,Melitaea cinxia,44.244,3.582,insect,uncommon
+Proserpine,Zerynthia rumina,44.244,3.582,insect,rare
+Diane,Zerynthia polyxena,48.259,7.454,insect,rare
+Écaille chinée,Euplagia quadripunctaria,44.244,3.582,insect,common
+Grand paon de nuit,Saturnia pyri,44.244,3.582,insect,uncommon
+Petit paon de nuit,Saturnia pavonia,48.4047,2.7002,insect,common
+Bombyx disparate,Lymantria dispar,48.4047,2.7002,insect,common
+Bombyx du chêne,Lasiocampa quercus,48.4047,2.7002,insect,common
+Sphinx colibri,Macroglossum stellatarum,43.209,5.434,insect,common
+Sphinx du tilleul,Mimas tiliae,48.4047,2.7002,insect,common
+Sphinx tête-de-mort,Acherontia atropos,43.522,4.427,insect,rare
+Zygène de la filipendule,Zygaena filipendulae,47.166,4.084,insect,common
+Zygène cendrée,Zygaena rhadamanthus,43.209,5.434,insect,uncommon
+Ascalaphe soufré,Libelloides coccajus,44.244,3.582,insect,uncommon
+Fourmilion commun,Myrmeleon formicarius,48.4047,2.7002,insect,common
+Perce-oreille commun,Forficula auricularia,48.4047,2.7002,insect,common
+Blatte des bois,Ectobius sylvestris,48.4047,2.7002,insect,common
+Éphippigère des vignes,Ephippiger diurnus,44.244,3.582,insect,common
+Criquet des roseaux,Mecostethus parapleurus,43.522,4.427,insect,rare
+Criquet des dunes,Calephorus compressicornis,44.589,-1.214,insect,rare
+Criquet hérisson,Prionotropis hystrix,43.209,5.434,insect,very_rare
+Dectique verrucivore,Decticus verrucivorus,46.776,6.083,insect,uncommon
+Grillon des marais,Pteronemobius heydenii,43.522,4.427,insect,rare
+Panorpe commune,Panorpa communis,48.4047,2.7002,insect,common
+Cousin géant,Tipula maxima,48.259,7.454,insect,common
+Mouche soldat noire,Hermetia illucens,43.522,4.427,insect,uncommon
+Asile crabroniforme,Asilus crabroniformis,44.244,3.582,insect,rare
+Chrysope verte,Chrysoperla carnea,48.4047,2.7002,insect,common
+Cicindèle champêtre,Cicindela campestris,48.4047,2.7002,insect,common
+Cicindèle hybride,Cicindela hybrida,44.589,-1.214,insect,rare
+Oedémère noble,Oedemera nobilis,48.4047,2.7002,insect,common
+Mordelle villose,Variimorda villosa,44.244,3.582,insect,uncommon
+Quartz,Quartz,48.4047,2.7002,rock,common
+Calcite,Calcite,46.776,6.083,rock,common
+Aragonite,Aragonite,44.244,3.582,rock,common
+Dolomite,Dolomite,44.244,3.582,rock,common
+Gypse,Gypsum,48.4047,2.7002,rock,common
+Fluorite,Fluorite,48.244,7.184,rock,common
+Baryte,Baryte,43.089,6.027,rock,common
+Pyrite,Pyrite,48.244,7.184,rock,common
+Marcasite,Marcasite,48.259,7.454,rock,common
+Galène,Galena,48.244,7.184,rock,common
+Sphalérite,Sphalerite,48.244,7.184,rock,common
+Chalcopyrite,Chalcopyrite,43.089,6.027,rock,common
+Bornite,Bornite,43.089,6.027,rock,uncommon
+Malachite,Malachite,43.089,6.027,rock,common
+Azurite,Azurite,43.089,6.027,rock,common
+Cérusite,Cerussite,43.089,6.027,rock,uncommon
+Anglésite,Anglesite,43.089,6.027,rock,uncommon
+Hématite,Hematite,48.244,7.184,rock,common
+Magnétite,Magnetite,42.805,1.373,rock,common
+Goethite,Goethite,48.244,7.184,rock,common
+Rutile,Rutile,42.805,1.373,rock,uncommon
+Anatase,Anatase,42.805,1.373,rock,uncommon
+Brookite,Brookite,42.805,1.373,rock,rare
+Ilménite,Ilmenite,42.805,1.373,rock,uncommon
+Titanite,Titanite,42.805,1.373,rock,uncommon
+Orthose,Orthoclase,46.324,2.931,rock,common
+Microcline,Microcline,46.324,2.931,rock,common
+Albite,Albite,46.324,2.931,rock,common
+Muscovite,Muscovite,46.324,2.931,rock,common
+Biotite,Biotite,46.324,2.931,rock,common
+Tourmaline noire,Schorl,46.324,2.931,rock,uncommon
+Béryl,Beryl,46.324,2.931,rock,rare
+Apatite,Apatite,46.324,2.931,rock,uncommon
+Topaze,Topaz,46.324,2.931,rock,rare
+Spodumène,Spodumene,46.324,2.931,rock,rare
+Lépidolite,Lepidolite,46.324,2.931,rock,rare
+Cassitérite,Cassiterite,46.324,2.931,rock,rare
+Wolframite,Wolframite,46.324,2.931,rock,rare
+Talc,Talc,42.771,1.811,rock,common
+Grenat almandin,Almandine,42.805,1.373,rock,uncommon
+Grenat grossulaire,Grossular,42.805,1.373,rock,uncommon
+Grenat andradite,Andradite,42.805,1.373,rock,rare
+Épidote,Epidote,42.805,1.373,rock,common
+Actinote,Actinolite,42.805,1.373,rock,uncommon
+Trémolite,Tremolite,42.771,1.811,rock,uncommon
+Disthène,Kyanite,42.805,1.373,rock,rare
+Andalousite,Andalusite,44.244,3.582,rock,uncommon
+Staurotide,Staurolite,44.244,3.582,rock,uncommon
+Clinochlore,Clinochlore,44.244,3.582,rock,common
+Calédonite,Caledonite,43.089,6.027,rock,rare
+Linarite,Linarite,43.089,6.027,rock,rare
+Langite,Langite,43.089,6.027,rock,rare
+Brochantite,Brochantite,43.089,6.027,rock,uncommon
+Cuprite,Cuprite,43.089,6.027,rock,uncommon
+Annabergite,Annabergite,48.244,7.184,rock,rare
+Smithsonite,Smithsonite,48.244,7.184,rock,uncommon
+Ankérite,Ankerite,48.244,7.184,rock,uncommon
+Pyromorphite,Pyromorphite,48.244,7.184,rock,rare
+Wulfénite,Wulfenite,43.089,6.027,rock,rare
+Célestine,Celestine,48.4047,2.7002,rock,common
+Polypore marginé,Fomitopsis pinicola,48.073,7.014,fungus,common

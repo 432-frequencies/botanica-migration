@@ -2,15 +2,20 @@ import { Zap, Lock, Unlock } from "lucide-react";
 
 export const LEVELS = [
   { level: 1,  xp: 0,     label: "Novice",             unlock: null },
-  { level: 2,  xp: 100,   label: "Herboriste",         unlock: null },
-  { level: 3,  xp: 250,   label: "Observateur",        unlock: null },
-  { level: 4,  xp: 500,   label: "Éclaireur",          unlock: null },
-  { level: 5,  xp: 900,   label: "Naturaliste",        unlock: null },
-  { level: 6,  xp: 1500,  label: "Garde Forestier",    unlock: null },
-  { level: 7,  xp: 2500,  label: "Expert Terrain",     unlock: null },
-  { level: 8,  xp: 4000,  label: "Protecteur",         unlock: null },
-  { level: 9,  xp: 6500,  label: "Sentinelle",         unlock: null },
-  { level: 10, xp: 10000, label: "Gardien du vivant",  unlock: null },
+  { level: 2,  xp: 30,    label: "Herboriste",         unlock: null },
+  { level: 3,  xp: 80,    label: "Observateur",        unlock: null },
+  { level: 4,  xp: 150,   label: "Éclaireur",          unlock: null },
+  { level: 5,  xp: 250,   label: "Naturaliste",        unlock: null },
+  { level: 6,  xp: 400,   label: "Garde Forestier",    unlock: null },
+  { level: 7,  xp: 600,   label: "Expert Terrain",     unlock: null },
+  { level: 8,  xp: 900,   label: "Protecteur",         unlock: null },
+  { level: 9,  xp: 1300,  label: "Sentinelle",         unlock: null },
+  { level: 10, xp: 1800,  label: "Gardien du vivant",  unlock: null },
+  { level: 11, xp: 2500,  label: "Maître Ranger",      unlock: null },
+  { level: 12, xp: 3500,  label: "Archiviste",         unlock: null },
+  { level: 13, xp: 5000,  label: "Sage",               unlock: null },
+  { level: 14, xp: 7000,  label: "Légende",            unlock: null },
+  { level: 15, xp: 10000, label: "Gardien Ultime",     unlock: null },
 ];
 
 export function getCurrentLevel(totalXP) {
