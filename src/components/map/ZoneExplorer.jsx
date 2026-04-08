@@ -20,6 +20,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
   const [stats, setStats] = useState({ ref: 0, users: 0, uniqueUsers: 0 });
   const [zoomLevel, setZoomLevel] = useState(15);
   const [showOnlyMyDiscoveries, setShowOnlyMyDiscoveries] = useState(false);
+  const [showListPanel, setShowListPanel] = useState(null); // 'reference', 'discoveries', ou null
 
   // Calculer centre de la zone (même logique que ZoneDetailPanel)
   const ZONE_SIZE_DEG = 0.0045; // Une zone = 0.0045° (~500m)
@@ -195,6 +196,34 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
     setShowOnlyMyDiscoveries(prev => !prev);
   };
 
+  // Calculer la distance entre deux coordonnées (formule Haversine)
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Rayon de la Terre en km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c * 1000; // Retourner en mètres
+  };
+
+  // Trier les espèces par distance
+  const sortedReferenceSpecies = [...referenceSpecies]
+    .map(species => ({
+      ...species,
+      distance: calculateDistance(centerLat, centerLng, species.latitude, species.longitude)
+    }))
+    .sort((a, b) => a.distance - b.distance);
+
+  const sortedUserDiscoveries = [...filteredDiscoveries]
+    .map(discovery => ({
+      ...discovery,
+      distance: calculateDistance(centerLat, centerLng, discovery.latitude, discovery.longitude)
+    }))
+    .sort((a, b) => a.distance - b.distance);
+
   // Filtrer les découvertes selon le mode
   const filteredDiscoveries = showOnlyMyDiscoveries
     ? userDiscoveries.filter(d => d.user_email === userEmail)
@@ -254,13 +283,18 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
           </button>
         </div>
 
-        {/* Stats bar */}
+        {/* Stats bar - CLIQUABLES */}
         {!loading && (
           <div className="grid grid-cols-3 gap-2">
-            <div
+            <button
+              onClick={() => {
+                feedback('tap', { haptic: true, sound: false });
+                setShowListPanel(showListPanel === 'reference' ? null : 'reference');
+              }}
+              className="text-left transition-all active:scale-95"
               style={{
-                background: 'rgba(45,122,31,0.1)',
-                border: '1px solid rgba(45,122,31,0.3)',
+                background: showListPanel === 'reference' ? 'rgba(45,122,31,0.2)' : 'rgba(45,122,31,0.1)',
+                border: `2px solid ${showListPanel === 'reference' ? 'rgba(45,122,31,0.5)' : 'rgba(45,122,31,0.3)'}`,
                 borderRadius: '8px',
                 padding: '8px',
               }}
@@ -272,12 +306,17 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
               <div className="text-[8px] uppercase tracking-wider" style={{ color: 'rgba(45,122,31,0.6)' }}>
                 Référence
               </div>
-            </div>
+            </button>
 
-            <div
+            <button
+              onClick={() => {
+                feedback('tap', { haptic: true, sound: false });
+                setShowListPanel(showListPanel === 'discoveries' ? null : 'discoveries');
+              }}
+              className="text-left transition-all active:scale-95"
               style={{
-                background: 'rgba(59,125,232,0.1)',
-                border: '1px solid rgba(59,125,232,0.3)',
+                background: showListPanel === 'discoveries' ? 'rgba(59,125,232,0.2)' : 'rgba(59,125,232,0.1)',
+                border: `2px solid ${showListPanel === 'discoveries' ? 'rgba(59,125,232,0.5)' : 'rgba(59,125,232,0.3)'}`,
                 borderRadius: '8px',
                 padding: '8px',
               }}
@@ -289,7 +328,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
               <div className="text-[8px] uppercase tracking-wider" style={{ color: 'rgba(59,125,232,0.6)' }}>
                 {showOnlyMyDiscoveries ? 'Mes Scans' : 'Découvertes'}
               </div>
-            </div>
+            </button>
 
             <div
               style={{
@@ -428,8 +467,156 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
           </>
         )}
 
-        {/* Légende */}
-        {!loading && (
+        {/* Liste d'espèces (panel slidable) */}
+        {!loading && showListPanel && (
+          <div
+            className="absolute bottom-4 left-4 right-4"
+            style={{
+              background: 'rgba(0,0,0,0.95)',
+              backdropFilter: 'blur(20px)',
+              border: '2px solid rgba(45,122,31,0.4)',
+              borderRadius: '16px',
+              maxHeight: '50vh',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            {/* Header */}
+            <div
+              className="flex items-center justify-between p-3 border-b"
+              style={{ borderColor: 'rgba(45,122,31,0.3)' }}
+            >
+              <div className="flex items-center gap-2">
+                {showListPanel === 'reference' ? (
+                  <>
+                    <Database className="w-4 h-4" style={{ color: 'var(--v1v-green)' }} />
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: 'var(--v1v-green)' }}>
+                      Références à proximité
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" style={{ color: '#3B7DE8' }} />
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: '#3B7DE8' }}>
+                      Découvertes
+                    </span>
+                  </>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  feedback('tap', { haptic: true, sound: false });
+                  setShowListPanel(null);
+                }}
+                className="min-w-[32px] min-h-[32px] flex items-center justify-center"
+              >
+                <X className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.6)' }} />
+              </button>
+            </div>
+
+            {/* Liste scrollable */}
+            <div className="overflow-y-auto p-2" style={{ maxHeight: 'calc(50vh - 60px)' }}>
+              {showListPanel === 'reference' ? (
+                sortedReferenceSpecies.length > 0 ? (
+                  <div className="space-y-2">
+                    {sortedReferenceSpecies.map((species, idx) => (
+                      <button
+                        key={species.id}
+                        onClick={() => {
+                          feedback('tap', { haptic: true, sound: false });
+                          handleSpeciesClick(species);
+                          setShowListPanel(null);
+                        }}
+                        className="w-full text-left p-3 transition-all active:scale-98"
+                        style={{
+                          background: 'rgba(45,122,31,0.08)',
+                          border: '1px solid rgba(45,122,31,0.2)',
+                          borderRadius: '10px',
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <p className="text-[11px] font-black" style={{ color: 'var(--v1v-green)' }}>
+                              {species.common_name}
+                            </p>
+                            {species.scientific_name && (
+                              <p className="text-[9px] italic mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                                {species.scientific_name}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex-shrink-0 text-right">
+                            <MapPin className="w-3 h-3 mb-0.5 inline" style={{ color: 'rgba(45,122,31,0.6)' }} />
+                            <p className="text-[9px] font-black" style={{ color: 'rgba(45,122,31,0.8)' }}>
+                              {species.distance < 1000
+                                ? `${Math.round(species.distance)}m`
+                                : `${(species.distance / 1000).toFixed(1)}km`}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-[10px] py-8" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                    Aucune espèce de référence dans cette zone
+                  </p>
+                )
+              ) : (
+                sortedUserDiscoveries.length > 0 ? (
+                  <div className="space-y-2">
+                    {sortedUserDiscoveries.map((discovery, idx) => (
+                      <button
+                        key={discovery.id}
+                        onClick={() => {
+                          feedback('tap', { haptic: true, sound: false });
+                          handleSpeciesClick(discovery);
+                          setShowListPanel(null);
+                        }}
+                        className="w-full text-left p-3 transition-all active:scale-98"
+                        style={{
+                          background: 'rgba(59,125,232,0.08)',
+                          border: '1px solid rgba(59,125,232,0.2)',
+                          borderRadius: '10px',
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <p className="text-[11px] font-black" style={{ color: '#3B7DE8' }}>
+                              {discovery.common_name}
+                            </p>
+                            {discovery.user_name && (
+                              <p className="text-[9px] mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                                par {discovery.user_name}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex-shrink-0 text-right">
+                            <MapPin className="w-3 h-3 mb-0.5 inline" style={{ color: 'rgba(59,125,232,0.6)' }} />
+                            <p className="text-[9px] font-black" style={{ color: 'rgba(59,125,232,0.8)' }}>
+                              {discovery.distance < 1000
+                                ? `${Math.round(discovery.distance)}m`
+                                : `${(discovery.distance / 1000).toFixed(1)}km`}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-[10px] py-8" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                    {showOnlyMyDiscoveries
+                      ? 'Vous n\'avez pas encore scanné dans cette zone'
+                      : 'Aucune découverte dans cette zone'}
+                  </p>
+                )
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Légende - cachée si panel ouvert */}
+        {!loading && !showListPanel && (
           <div
             className="absolute bottom-4 left-4 right-4"
             style={{
@@ -511,6 +698,29 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
               {selectedSpecies.scientific_name}
             </p>
           )}
+
+          {/* Distance */}
+          <div
+            className="flex items-center gap-2 py-2 px-3 mb-3"
+            style={{
+              background: 'rgba(45,122,31,0.1)',
+              border: '1px solid rgba(45,122,31,0.3)',
+              borderRadius: '8px',
+            }}
+          >
+            <MapPin className="w-4 h-4" style={{ color: 'var(--v1v-green)' }} />
+            <div>
+              <p className="text-[10px] font-black" style={{ color: 'var(--v1v-green)' }}>
+                {(() => {
+                  const dist = calculateDistance(centerLat, centerLng, selectedSpecies.latitude, selectedSpecies.longitude);
+                  return dist < 1000 ? `${Math.round(dist)}m` : `${(dist / 1000).toFixed(1)}km`;
+                })()}
+              </p>
+              <p className="text-[8px]" style={{ color: 'rgba(45,122,31,0.6)' }}>
+                depuis le centre de la zone
+              </p>
+            </div>
+          </div>
 
           {selectedSpecies.user_name && (
             <div
