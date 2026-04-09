@@ -1,9 +1,10 @@
 import { createPortal } from "react-dom";
-import { X, Crown, Target, MapPin, Compass } from "lucide-react";
+import { X, Crown, Target, MapPin, Compass, Trophy, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { modalSlideUp } from "@/motion/variants";
+import { supabase } from "@/api/supabaseClient";
 import ZoneExplorer from "./ZoneExplorer";
 
 const ZONE_DEG = 0.0045;
@@ -16,9 +17,12 @@ function zoneCenterCoords(zone_id) {
   };
 }
 
-export default function ZoneDetailPanel({ zone, onClose, userEmail }) {
+export default function ZoneDetailPanel({ zone, onClose, userEmail, onConquest }) {
   const navigate = useNavigate();
   const [showExplorer, setShowExplorer] = useState(false);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [userRank, setUserRank] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   if (!zone) return null;
 
@@ -30,6 +34,63 @@ export default function ZoneDetailPanel({ zone, onClose, userEmail }) {
   const noLeader = !zone.leader;
 
   const { lat, lng } = zoneCenterCoords(zone.zone_id);
+
+  // Charger le classement de la zone
+  useEffect(() => {
+    loadZoneLeaderboard();
+  }, [zone.zone_id, userEmail]);
+
+  const loadZoneLeaderboard = async () => {
+    setLoading(true);
+    try {
+      // Récupérer toutes les découvertes dans cette zone
+      const ZONE_SIZE_DEG = 0.0045;
+      const [zLat, zLng] = zone.zone_id.split('_').map(Number);
+      const centerLat = (zLat + 0.5) * ZONE_SIZE_DEG;
+      const centerLng = (zLng + 0.5) * ZONE_SIZE_DEG;
+
+      const latDelta = ZONE_SIZE_DEG / 2;
+      const lngDelta = ZONE_SIZE_DEG / 2;
+
+      const { data: discoveries } = await supabase
+        .from('plant_discoveries')
+        .select('user_email, common_name')
+        .gte('latitude', centerLat - latDelta)
+        .lte('latitude', centerLat + latDelta)
+        .gte('longitude', centerLng - lngDelta)
+        .lte('longitude', centerLng + lngDelta)
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null);
+
+      // Compter les espèces uniques par utilisateur
+      const userSpecies = {};
+      (discoveries || []).forEach(d => {
+        if (!userSpecies[d.user_email]) {
+          userSpecies[d.user_email] = new Set();
+        }
+        userSpecies[d.user_email].add(d.common_name);
+      });
+
+      // Créer le classement
+      const ranking = Object.entries(userSpecies)
+        .map(([email, species]) => ({
+          user_email: email,
+          display_name: email.split('@')[0],
+          species_count: species.size,
+        }))
+        .sort((a, b) => b.species_count - a.species_count);
+
+      setLeaderboard(ranking.slice(0, 5)); // Top 5
+
+      // Trouver le rang de l'utilisateur
+      const myRank = ranking.findIndex(r => r.user_email === userEmail);
+      setUserRank(myRank >= 0 ? myRank + 1 : null);
+    } catch (err) {
+      console.error('[ZoneDetailPanel] Erreur chargement classement:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleExplore = () => {
     setShowExplorer(true);
@@ -124,35 +185,81 @@ export default function ZoneDetailPanel({ zone, onClose, userEmail }) {
                 )}
               </div>
 
-              {/* User score */}
-              {!isOwned && (
+              {/* Classement de la zone */}
+              {!loading && leaderboard.length > 0 && (
                 <div
                   className="p-4"
-                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                  style={{
+                    background: "rgba(255,255,255,0.02)",
+                    border: "1px solid rgba(255,255,255,0.05)",
+                  }}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-[8px] font-black uppercase tracking-[0.2em] mb-1" style={{ color: "var(--v1v-fg-faint)" }}>Votre score</p>
-                      <p className="text-2xl font-black number-display" style={{ color: "var(--v1v-green)" }}>{userScore}</p>
-                    </div>
-                    {!noLeader && (
-                      <div className="text-right">
-                        <p className="text-sm font-black" style={{ color: gap > 0 ? "var(--v1v-fg-muted)" : "var(--v1v-green)" }}>
-                          {gap > 0 ? `−${gap} espèces` : "Conquérable"}
-                        </p>
-                      </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Trophy className="w-3.5 h-3.5" style={{ color: "var(--v1v-amber)" }} />
+                    <p className="text-[8px] font-black uppercase tracking-[0.2em]" style={{ color: "var(--v1v-fg-muted)" }}>
+                      Top Explorateurs
+                    </p>
+                    {userRank && (
+                      <span className="ml-auto text-[8px] font-black uppercase tracking-wider px-2 py-0.5" style={{
+                        background: userRank === 1 ? "rgba(196,154,10,0.2)" : "rgba(59,125,232,0.15)",
+                        color: userRank === 1 ? "var(--v1v-amber)" : "#3B7DE8",
+                        borderRadius: "4px",
+                      }}>
+                        {userRank === 1 ? "🏆 Champion" : `#${userRank}`}
+                      </span>
                     )}
                   </div>
-                  {!noLeader && leaderScore > 0 && (
-                    <div style={{ height: 2, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-                      <div
-                        style={{
-                          height: "100%",
-                          width: `${Math.min(100, (userScore / scoreToBeat) * 100)}%`,
-                          background: gap === 0 ? "var(--v1v-amber)" : "var(--v1v-green)",
-                          transition: "width 0.7s ease",
-                        }}
-                      />
+
+                  <div className="space-y-1.5">
+                    {leaderboard.map((player, idx) => {
+                      const isCurrentUser = player.user_email === userEmail;
+                      const isChampion = idx === 0;
+                      return (
+                        <div
+                          key={player.user_email}
+                          className="flex items-center justify-between py-2 px-3"
+                          style={{
+                            background: isCurrentUser ? "rgba(45,122,31,0.12)" : "rgba(255,255,255,0.02)",
+                            border: `1px solid ${isCurrentUser ? "rgba(45,122,31,0.3)" : "rgba(255,255,255,0.03)"}`,
+                            borderRadius: "8px",
+                          }}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className="flex-shrink-0 flex items-center justify-center"
+                              style={{
+                                width: 24,
+                                height: 24,
+                                borderRadius: "6px",
+                                background: isChampion ? "rgba(196,154,10,0.2)" : "rgba(255,255,255,0.05)",
+                                fontSize: "11px",
+                                fontWeight: "black",
+                                color: isChampion ? "var(--v1v-amber)" : "var(--v1v-fg-muted)",
+                              }}
+                            >
+                              {isChampion ? "👑" : `#${idx + 1}`}
+                            </div>
+                            <p className="text-[11px] font-black" style={{ color: isCurrentUser ? "var(--v1v-green)" : "var(--v1v-fg)" }}>
+                              {isCurrentUser ? "Vous" : player.display_name}
+                            </p>
+                          </div>
+                          <p className="text-[11px] font-black tabular-nums" style={{ color: isChampion ? "var(--v1v-amber)" : "var(--v1v-fg-muted)" }}>
+                            {player.species_count} {player.species_count > 1 ? "espèces" : "espèce"}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Message si pas dans le top 5 */}
+                  {userRank && userRank > 5 && (
+                    <div className="mt-3 pt-3 border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                      <div className="flex items-center justify-between text-[10px]" style={{ color: "var(--v1v-fg-muted)" }}>
+                        <span>Votre classement</span>
+                        <span className="font-black" style={{ color: "var(--v1v-green)" }}>
+                          #{userRank} · {userScore} espèce{userScore > 1 ? "s" : ""}
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
