@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/api/supabaseClient";
-import { Crown, RefreshCw, MapPin } from "lucide-react";
+import { Crown, RefreshCw, MapPin, Sparkles } from "lucide-react";
 import ZoneDetailPanel from "@/components/map/ZoneDetailPanel";
 import ConquestVictoryModal from "@/components/map/ConquestVictoryModal";
+import ChampionCelebration from "@/components/map/ChampionCelebration";
 import MapHUD from "@/components/map/MapHUD";
 
 const ZONE_DEG = 0.0045; // ~500m par carré
@@ -80,6 +81,7 @@ export default function TerritorialMap() {
   const [syncMsg, setSyncMsg] = useState(null);
   const [notifications, setNotifications] = useState([]); // [{id, type, msg}]
   const [conquestZone, setConquestZone] = useState(null); // { zone_id, userScore }
+  const [championZone, setChampionZone] = useState(null); // Zone où on devient champion
   const [userDisplayName, setUserDisplayName] = useState(null);
   const prevLeadersRef = useRef({});
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -353,21 +355,29 @@ export default function TerritorialMap() {
             const x = dLng * PX_PER_ZONE;
             const y = dLat * PX_PER_ZONE;
 
-            let bg, border;
+            let bg, border, boxShadow;
             if (isOwned) {
-              bg = "rgba(196,154,10,0.16)";
-              border = "rgba(196,154,10,0.55)";
+              // Zone conquise : style doré avec glow
+              bg = "linear-gradient(135deg, rgba(196,154,10,0.25) 0%, rgba(255,215,0,0.15) 100%)";
+              border = "rgba(196,154,10,0.7)";
+              boxShadow = "0 0 12px rgba(196,154,10,0.4), inset 0 0 20px rgba(255,215,0,0.1)";
             } else if (isConquerable) {
               bg = "rgba(46,168,15,0.14)";
               border = "rgba(46,168,15,0.45)";
+              boxShadow = "0 0 8px rgba(46,168,15,0.2)";
             } else if (isFree) {
               bg = "rgba(59,125,232,0.08)";
               border = "rgba(59,125,232,0.25)";
+              boxShadow = "none";
             } else {
               bg = "rgba(226,234,224,0.04)";
               border = "rgba(226,234,224,0.12)";
+              boxShadow = "none";
             }
-            if (isUser) border = isOwned ? "rgba(196,154,10,0.85)" : "rgba(59,125,232,0.75)";
+            if (isUser) {
+              border = isOwned ? "rgba(196,154,10,0.9)" : "rgba(59,125,232,0.75)";
+              boxShadow = isOwned ? "0 0 16px rgba(196,154,10,0.6), inset 0 0 24px rgba(255,215,0,0.15)" : "0 0 12px rgba(59,125,232,0.4)";
+            }
 
             return (
               <button
@@ -381,13 +391,14 @@ export default function TerritorialMap() {
                   height: PX_PER_ZONE - 2,
                   background: bg,
                   border: `${isUser ? 2 : 1}px solid ${border}`,
+                  boxShadow: boxShadow,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 1,
                   padding: 2,
-                  transition: "all 0.2s ease",
+                  transition: "all 0.3s ease",
                   cursor: "pointer",
                 }}
               >
@@ -439,11 +450,16 @@ export default function TerritorialMap() {
         zone={selectedZone}
         onClose={() => setSelectedZone(null)}
         userEmail={userEmail}
+        onConquest={(zone) => setChampionZone(zone)}
       />
       <ConquestVictoryModal
         zone={conquestZone}
         userDisplayName={userDisplayName}
         onClose={() => setConquestZone(null)}
+      />
+      <ChampionCelebration
+        zone={championZone}
+        onClose={() => setChampionZone(null)}
       />
     </div>
   );

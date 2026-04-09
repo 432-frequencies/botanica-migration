@@ -23,6 +23,7 @@ export default function ZoneDetailPanel({ zone, onClose, userEmail, onConquest }
   const [leaderboard, setLeaderboard] = useState([]);
   const [userRank, setUserRank] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [previousRank, setPreviousRank] = useState(null);
 
   if (!zone) return null;
 
@@ -84,7 +85,15 @@ export default function ZoneDetailPanel({ zone, onClose, userEmail, onConquest }
 
       // Trouver le rang de l'utilisateur
       const myRank = ranking.findIndex(r => r.user_email === userEmail);
-      setUserRank(myRank >= 0 ? myRank + 1 : null);
+      const newRank = myRank >= 0 ? myRank + 1 : null;
+
+      // Déclencher la célébration si on devient champion (#1)
+      if (onConquest && newRank === 1 && previousRank !== 1) {
+        onConquest({ zone_id: zone.zone_id });
+      }
+
+      setPreviousRank(newRank);
+      setUserRank(newRank);
     } catch (err) {
       console.error('[ZoneDetailPanel] Erreur chargement classement:', err);
     } finally {
