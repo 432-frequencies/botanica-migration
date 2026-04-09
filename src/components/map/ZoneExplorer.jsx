@@ -126,6 +126,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
         longitude: d.longitude,
         category: d.category || 'plant',
         rarity: d.rarity || 'commune',
+        photo_url: d.photo_url || d.thumbnail_url, // Utiliser photo ou thumbnail
         user_name: d.user_email?.split('@')[0] || 'Anonyme',
         user_email: d.user_email,
         created_at: d.created_at,
