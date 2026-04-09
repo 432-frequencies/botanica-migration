@@ -527,25 +527,70 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                           handleSpeciesClick(species);
                           setShowListPanel(null);
                         }}
-                        className="w-full text-left p-3 transition-all active:scale-98"
+                        className="w-full text-left transition-all active:scale-98"
                         style={{
                           background: 'rgba(45,122,31,0.08)',
                           border: '1px solid rgba(45,122,31,0.2)',
                           borderRadius: '10px',
+                          overflow: 'hidden',
                         }}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <p className="text-[11px] font-black" style={{ color: 'var(--v1v-green)' }}>
+                        <div className="flex items-center gap-3">
+                          {/* Photo thumbnail */}
+                          {species.photo_url ? (
+                            <div
+                              className="flex-shrink-0"
+                              style={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '8px',
+                                overflow: 'hidden',
+                                background: 'rgba(45,122,31,0.1)',
+                              }}
+                            >
+                              <img
+                                src={species.photo_url}
+                                alt={species.common_name}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                }}
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.parentElement.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;">🌿</div>';
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <div
+                              className="flex-shrink-0 flex items-center justify-center"
+                              style={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '8px',
+                                background: 'rgba(45,122,31,0.15)',
+                                fontSize: '24px',
+                              }}
+                            >
+                              🌿
+                            </div>
+                          )}
+
+                          {/* Info section */}
+                          <div className="flex-1 min-w-0 py-2">
+                            <p className="text-[11px] font-black truncate" style={{ color: 'var(--v1v-green)' }}>
                               {species.common_name}
                             </p>
                             {species.scientific_name && (
-                              <p className="text-[9px] italic mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                              <p className="text-[9px] italic mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>
                                 {species.scientific_name}
                               </p>
                             )}
                           </div>
-                          <div className="flex-shrink-0 text-right">
+
+                          {/* Distance */}
+                          <div className="flex-shrink-0 text-right pr-3">
                             <MapPin className="w-3 h-3 mb-0.5 inline" style={{ color: 'rgba(45,122,31,0.6)' }} />
                             <p className="text-[9px] font-black" style={{ color: 'rgba(45,122,31,0.8)' }}>
                               {species.distance < 1000
@@ -573,25 +618,70 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                           handleSpeciesClick(discovery);
                           setShowListPanel(null);
                         }}
-                        className="w-full text-left p-3 transition-all active:scale-98"
+                        className="w-full text-left transition-all active:scale-98"
                         style={{
                           background: 'rgba(59,125,232,0.08)',
                           border: '1px solid rgba(59,125,232,0.2)',
                           borderRadius: '10px',
+                          overflow: 'hidden',
                         }}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <p className="text-[11px] font-black" style={{ color: '#3B7DE8' }}>
+                        <div className="flex items-center gap-3">
+                          {/* Photo thumbnail */}
+                          {discovery.photo_url ? (
+                            <div
+                              className="flex-shrink-0"
+                              style={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '8px',
+                                overflow: 'hidden',
+                                background: 'rgba(59,125,232,0.1)',
+                              }}
+                            >
+                              <img
+                                src={discovery.photo_url}
+                                alt={discovery.common_name}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                }}
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.parentElement.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;">📷</div>';
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <div
+                              className="flex-shrink-0 flex items-center justify-center"
+                              style={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '8px',
+                                background: 'rgba(59,125,232,0.15)',
+                                fontSize: '24px',
+                              }}
+                            >
+                              📷
+                            </div>
+                          )}
+
+                          {/* Info section */}
+                          <div className="flex-1 min-w-0 py-2">
+                            <p className="text-[11px] font-black truncate" style={{ color: '#3B7DE8' }}>
                               {discovery.common_name}
                             </p>
                             {discovery.user_name && (
-                              <p className="text-[9px] mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                                par {discovery.user_name}
+                              <p className="text-[9px] mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                                📷 {discovery.user_name}
                               </p>
                             )}
                           </div>
-                          <div className="flex-shrink-0 text-right">
+
+                          {/* Distance */}
+                          <div className="flex-shrink-0 text-right pr-3">
                             <MapPin className="w-3 h-3 mb-0.5 inline" style={{ color: 'rgba(59,125,232,0.6)' }} />
                             <p className="text-[9px] font-black" style={{ color: 'rgba(59,125,232,0.8)' }}>
                               {discovery.distance < 1000
