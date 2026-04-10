@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { BADGES, BADGE_CATEGORIES, computeStats } from "@/utils/badges";
-import { MapPin, Crown, Trophy, Leaf } from "lucide-react";
+import { MapPin, Trophy } from "lucide-react";
 import SeasonCard from "@/components/profile/SeasonCard";
 
 const CATEGORY_ORDER = ["diversity", "biome", "category", "behavior", "saison"];
@@ -80,14 +80,15 @@ function ZoneSection({ userEmail }) {
     <div>
       <div className="flex items-center gap-2 mb-3">
         <MapPin className="w-3.5 h-3.5" style={{ color: "var(--v1v-fg-faint)" }} />
-        <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: "var(--v1v-fg-faint)" }}>Zones Conquêses</p>
+        <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: "var(--v1v-fg-faint)" }}>Zones documentées</p>
       </div>
 
       {loading ? (
         <div style={{ height: 60, background: "var(--v1v-surface-1)", border: "1px solid rgba(255,255,255,0.05)" }} className="loading-skeleton" />
       ) : zones.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-5 text-center" style={{ background: "var(--v1v-surface-1)", border: "1px solid rgba(255,255,255,0.05)" }}>
-          <p className="text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: "var(--v1v-fg-faint)" }}>Aucune zone conquise</p>
+        <div className="flex flex-col items-center justify-center py-5 text-center px-4" style={{ background: "var(--v1v-surface-1)", border: "1px solid rgba(255,255,255,0.05)" }}>
+          <p className="text-[10px] font-black uppercase tracking-[0.1em] mb-1" style={{ color: "var(--v1v-fg-faint)" }}>Aucune zone documentée</p>
+          <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.38)" }}>Quelques observations bien placées suffisent pour signer ta première zone.</p>
         </div>
       ) : (
         <div className="flex flex-col gap-1.5">
@@ -98,7 +99,7 @@ function ZoneSection({ userEmail }) {
               className="flex items-center justify-between"
             >
               <div className="flex items-center gap-2.5">
-                <Crown className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--v1v-amber)" }} />
+                <MapPin className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--v1v-amber)" }} />
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.08em]" style={{ color: "var(--v1v-fg)" }}>Zone #{z.zone_id}</p>
                 </div>
@@ -130,11 +131,11 @@ export default function Badges() {
       setUserEmail(user.email);
       Promise.all([
         supabase.from('plant_discoveries').select('*').eq('user_email', user.email),
-        supabase.from('user_profiles').select('*').eq('user_email', user.email).single(),
+        supabase.from('user_profiles').select('*').eq('user_email', user.email).limit(1),
         supabase.from('seasons').select('*').eq('is_active', true).limit(1),
       ]).then(([discRes, profileRes, seasonRes]) => {
         setDiscoveries(discRes.data || []);
-        setUserProfile(profileRes.data || null);
+        setUserProfile(profileRes.data?.[0] || null);
         setActiveSeason(seasonRes.data?.[0] || null);
         setLoading(false);
       });

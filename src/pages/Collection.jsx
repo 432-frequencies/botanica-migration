@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense, lazy } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { getUserProfile } from "@/api/getUserProfile";
 import { Search, Database, Leaf, WifiOff } from "lucide-react";
@@ -6,14 +6,14 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { createPageUrl } from "@/utils";
 import PlantCard from "@/components/collection/PlantCard";
-import PlantDetailModal from "@/components/collection/PlantDetailModal";
-import LearnMoreModal from "@/components/collection/LearnMoreModal";
 import PullToRefresh from "@/components/shared/PullToRefresh";
 import { useIsActivePage } from "@/lib/ActivePageContext";
+import { normalizeSpeciesRecord } from "@/lib/species";
+import { hasLaunchAccess } from "@/lib/app-config";
 
+const PlantDetailModal = lazy(() => import("@/components/collection/PlantDetailModal"));
+const LearnMoreModal = lazy(() => import("@/components/collection/LearnMoreModal"));
 
-const G = "var(--v1v-green)";
-const GDB = "var(--v1v-green-bg-subtle)";
 // 2-column premium grid — image 160px + info ~72px + gap = ~240px
 const ROW_HEIGHT = 240;
 const COLS = 2;
@@ -30,6 +30,7 @@ const FILTERS = [
   { key: "tree",    label: "Arbres" },
   { key: "rock",    label: "Roches" },
   { key: "insect",  label: "Insectes" },
+  { key: "arachnid", label: "Araignées" },
   { key: "edible",  label: "Comestibles" },
   { key: "toxic",   label: "Toxiques" },
 ];
@@ -42,7 +43,7 @@ function applyFilter(plants, search, filter) {
   );
   if (filter === "edible") f = f.filter(p => p.is_edible);
   else if (filter === "toxic") f = f.filter(p => p.is_toxic);
-  else if (["plant","bird","rock","fungus","tree","insect"].includes(filter)) f = f.filter(p => (p.category || "plant") === filter);
+  else if (["plant","bird","rock","fungus","tree","insect","arachnid"].includes(filter)) f = f.filter(p => (p.category || "plant") === filter);
   else if (filter !== "all") f = f.filter(p => p.rarity === filter);
   return f;
 }
@@ -72,6 +73,17 @@ function SkeletonGrid() {
   );
 }
 
+function ModalFallback() {
+  return (
+    <div className="fixed inset-0 z-[9998] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.75)" }}>
+      <div className="px-6 py-5 text-center" style={{ background: "var(--v1v-bg-card)", border: "1px solid var(--v1v-green-ghost)" }}>
+        <div className="w-7 h-7 rounded-full border-2 mx-auto mb-3 animate-spin" style={{ borderColor: "var(--v1v-green)", borderTopColor: "transparent" }} />
+        <p className="text-[9px] font-black uppercase tracking-[0.35em]" style={{ color: "var(--v1v-green-faint)" }}>Ouverture de la fiche...</p>
+      </div>
+    </div>
+  );
+}
+
 export default function Collection() {
   const [allPlants, setAllPlants]   = useState([]);
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -95,7 +107,7 @@ export default function Collection() {
 
     // Serve cache instantly on first mount
     if (!background && collectionsCache.has(user.email)) {
-      setAllPlants(collectionsCache.get(user.email));
+      setAllPlants(collectionsCache.get(user.email).map(normalizeSpeciesRecord));
       setDataLoaded(true);
       setTimeout(() => setVisible(true), 20);
     }
@@ -106,14 +118,16 @@ export default function Collection() {
         getUserProfile(),
       ]);
 
-      const all = discoveryData.status === "fulfilled" ? (discoveryData.value.data || []) : [];
+      const all = discoveryData.status === "fulfilled"
+        ? (discoveryData.value.data || []).map(normalizeSpeciesRecord)
+        : [];
       if (discoveryData.status === "rejected" && !collectionsCache.has(user.email)) {
         setLoadError(true); setDataLoaded(true); return;
       }
       collectionsCache.set(user.email, all);
       setAllPlants(all);
-      setIsPro(profileResult.status === "fulfilled" ? (profileResult.value?.profile?.is_pro || false) : false);
-    } catch (e) {
+      setIsPro(profileResult.status === "fulfilled" ? hasLaunchAccess(profileResult.value?.profile) : false);
+    } catch {
       if (!collectionsCache.has(user.email)) { setLoadError(true); setDataLoaded(true); return; }
     }
 
@@ -181,14 +195,20 @@ export default function Collection() {
     <div className="min-h-screen overflow-y-auto" style={{ background: "var(--v1v-bg)", color: "var(--v1v-fg)", overscrollBehavior: "contain" }}>
 
         {selected && !learnMore && (
-          <PlantDetailModal
-            plant={selected}
-            isPro={isPro}
-            onClose={() => setSelected(null)}
-            onLearnMore={(p) => { setLearnMore(p); setSelected(null); }}
-          />
+          <Suspense fallback={<ModalFallback />}>
+            <PlantDetailModal
+              plant={selected}
+              isPro={isPro}
+              onClose={() => setSelected(null)}
+              onLearnMore={(p) => { setLearnMore(p); setSelected(null); }}
+            />
+          </Suspense>
         )}
-        <LearnMoreModal plant={learnMore} onClose={() => setLearnMore(null)} />
+        {learnMore && (
+          <Suspense fallback={<ModalFallback />}>
+            <LearnMoreModal plant={learnMore} onClose={() => setLearnMore(null)} />
+          </Suspense>
+        )}
 
         <PullToRefresh onRefresh={() => loadData(true)}>
 
@@ -284,24 +304,38 @@ export default function Collection() {
                         <Leaf className="w-9 h-9" style={{ color: "var(--v1v-green)" }} />
                       </div>
                       <h2 className="text-xl font-black uppercase tracking-wider mb-2" style={{ color: "var(--v1v-fg)" }}>
-                        Ton journal est vide
+                        Ton terrain t'attend
                       </h2>
                       <p className="text-sm mb-8" style={{ color: "var(--v1v-fg-muted)" }}>
-                        Scanne ta première espèce pour commencer
+                        Chaque scan ajoute une trace à ton journal et enrichit la documentation du vivant autour de toi.
                       </p>
                       <Link to={`${createPageUrl("Home")}?openCamera=true`}>
                         <button
                           className="px-8 py-4 text-sm font-black uppercase tracking-[0.3em] transition-all active:scale-[0.97]"
                           style={{ background: "var(--v1v-green)", color: "var(--v1v-bg)", boxShadow: "0 0 20px rgba(45,122,31,0.3)" }}
                         >
-                          Scanner maintenant →
+                          Lancer un scan →
                         </button>
                       </Link>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-24 text-center">
                       <Database className="w-8 h-8 mb-4" style={{ color: "rgba(45,122,31,0.3)" }} />
-                      <p className="text-xs font-black uppercase tracking-[0.3em]" style={{ color: "rgba(45,122,31,0.4)" }}>No results found</p>
+                      <p className="text-xs font-black uppercase tracking-[0.3em] mb-2" style={{ color: "rgba(45,122,31,0.5)" }}>
+                        Aucune observation dans ce filtre
+                      </p>
+                      <p className="text-[11px] max-w-[260px] mb-4" style={{ color: "rgba(45,122,31,0.45)" }}>
+                        {search
+                          ? "Essaie un autre nom ou efface la recherche pour rouvrir ton journal."
+                          : "Change de filtre ou réinitialise pour retrouver toutes tes observations actives."}
+                      </p>
+                      <button
+                        onClick={() => { setSearch(""); setFilter("all"); }}
+                        className="px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.28em]"
+                        style={{ border: "1px solid rgba(45,122,31,0.28)", color: "var(--v1v-green)" }}
+                      >
+                        Réinitialiser le journal
+                      </button>
                     </div>
                   )
                 ) : (

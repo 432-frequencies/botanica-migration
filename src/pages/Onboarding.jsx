@@ -8,7 +8,6 @@ import { Scan, Zap, Trophy, MapPin, ChevronRight } from "lucide-react";
 import CameraCapture from "@/components/identify/CameraCapture";
 
 const G = "var(--v1v-green)";
-const GDB = "var(--v1v-green-bg)";
 
 const FEATURES = [
   {
@@ -19,12 +18,12 @@ const FEATURES = [
   {
     icon: Zap,
     title: "Collecte",
-    text: "Chaque découverte unique rapporte des XP. 100 espèces différentes = Légende Naturelle.",
+    text: "Chaque découverte unique rapporte des XP et enrichit ton journal du vivant.",
   },
   {
     icon: Trophy,
-    title: "Conquête",
-    text: "Domine les zones de 500m autour de toi. Sois le premier découvreur de ta région.",
+    title: "Contribution",
+    text: "Documente les zones de 500m autour de toi et deviens un repère local du vivant.",
   },
 ];
 
@@ -60,7 +59,7 @@ export default function Onboarding() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         userDataRef.current = user;
-      } catch (e) {}
+      } catch {}
     };
     load();
   }, []);
@@ -115,7 +114,7 @@ export default function Onboarding() {
       return;
     }
 
-    if (res?.error === "LIMIT_REACHED") { setScanError("Limite quotidienne atteinte."); setIdentifying(false); return; }
+    if (res?.error === "LIMIT_REACHED") { setScanError("Le service de scan est temporairement en pause. Réessaie un peu plus tard."); setIdentifying(false); return; }
     if (res?.error === "FAKE_IMAGE") { setScanError("Photo non valide — prends une vraie photo du spécimen."); setIdentifying(false); return; }
     if (res?.error === "NO_PLANT_FOUND") { setScanError("Aucun spécimen détecté — réessaie."); setIdentifying(false); return; }
     if (res?.error || !res?.top_result) { setScanError("Identification échouée. Réessaie."); setIdentifying(false); return; }
@@ -292,7 +291,7 @@ export default function Onboarding() {
               className="text-sm leading-relaxed max-w-sm text-center mb-8"
               style={{ color: "var(--v1v-fg-muted)" }}
             >
-              La localisation est au cœur de W1LD — pour les zones à conquérir, les espèces proches de toi, et marquer tes découvertes sur la carte mondiale.
+              La localisation est au cœur de W1LD — pour documenter les zones autour de toi, repérer les espèces proches et situer tes découvertes sur la carte du vivant.
             </p>
 
             {geoStatus === "granted" && (

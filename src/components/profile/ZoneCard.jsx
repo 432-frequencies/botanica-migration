@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/api/supabaseClient";
+import { useZoneLabel } from "@/lib/locationMeta";
 import { MapPin, Crown, Target } from "lucide-react";
 
 const G = "var(--v1v-blue)";
@@ -15,6 +16,7 @@ export default function ZoneCard({ userEmail, displayName, discoveries }) {
   const [zone, setZone] = useState(null);
   const [loading, setLoading] = useState(false);
   const [hasLocation, setHasLocation] = useState(false);
+  const { label: zoneName } = useZoneLabel(zone?.zone_id);
 
   useEffect(() => {
     navigator.geolocation?.getCurrentPosition(
@@ -86,26 +88,32 @@ export default function ZoneCard({ userEmail, displayName, discoveries }) {
         {zone.isLeader && (
           <span className="ml-auto flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.3em] px-2 py-0.5"
             style={{ background: "rgba(200,150,10,0.15)", color: "#C8960A", border: "1px solid rgba(200,150,10,0.4)" }}>
-            <Crown className="w-2.5 h-2.5" /> Leader
+            <Crown className="w-2.5 h-2.5" /> Référence
           </span>
         )}
       </div>
 
       {noLeader ? (
         <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.12em] mb-2" style={{ color: BLUE_FAINT }}>
+            {zoneName || zone.zone_id}
+          </p>
           <p className="text-base font-black uppercase tracking-wider mb-1" style={{ color: G }}>
-            Zone libre
+            Zone à initier
           </p>
           <p className="text-xs" style={{ color: BLUE_FAINT }}>
-            Scannez des espèces ici pour conquérir cette zone
+            Observe des espèces ici pour lancer la documentation locale
           </p>
         </div>
       ) : (
         <div>
           <div className="flex items-center justify-between mb-3">
             <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.12em] mb-1" style={{ color: BLUE_FAINT }}>
+                {zoneName || zone.zone_id}
+              </p>
               <p className="text-[8px] font-black uppercase tracking-[0.3em] mb-0.5" style={{ color: BLUE_FAINT }}>
-                {zone.isLeader ? "Vous dirigez" : "Leader"}
+                {zone.isLeader ? "Vous documentez" : "Référence"}
               </p>
               <p className="text-sm font-black uppercase tracking-wider" style={{ color: zone.isLeader ? "#C8960A" : "var(--v1v-fg)" }}>
                 {zone.isLeader ? displayName : zone.leader}
@@ -137,17 +145,17 @@ export default function ZoneCard({ userEmail, displayName, discoveries }) {
               </div>
               {canConquer && (
                 <p className="text-[8px] font-black uppercase tracking-[0.3em] mt-1.5" style={{ color: "#C8960A" }}>
-                  ★ Zone prenable — scannez une espèce ici pour conquérir
+                  ★ Référence accessible — une espèce ici peut faire évoluer la zone
                 </p>
               )}
               {isClose && (
                 <p className="text-[8px] font-black uppercase tracking-[0.3em] mt-1.5" style={{ color: "var(--v1v-green)" }}>
-                  ⚡ Tu es à {gap} espèce{gap > 1 ? "s" : ""} du leader
+                  ⚡ Tu es à {gap} espèce{gap > 1 ? "s" : ""} de la référence
                 </p>
               )}
               {isNear && (
                 <p className="text-[8px] font-black uppercase tracking-[0.3em] mt-1.5" style={{ color: "var(--v1v-amber)" }}>
-                  🎯 Tu es à {gap} espèces du leader
+                  🎯 Tu es à {gap} espèces de la référence
                 </p>
               )}
             </div>
