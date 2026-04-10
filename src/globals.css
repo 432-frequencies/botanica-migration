@@ -28,42 +28,42 @@ button, a, nav * {
 
 /* ─── Design tokens ───────────────────────────────────────────────────────── */
 :root {
-  --v1v-bg:                  #080E08;
-  --v1v-bg-overlay:          rgba(10,15,10,0.96);
-  --v1v-bg-overlay-heavy:    rgba(8,14,8,0.98);
-  --v1v-bg-overlay-full:     rgba(8,14,8,0.97);
-  --v1v-bg-card:             #0F160E;
-  --v1v-surface-1:           #131B12;
-  --v1v-surface-2:           #172016;
-  --v1v-fg:                  #E2EAE0;
-  --v1v-fg-muted:            rgba(226,234,224,0.5);
-  --v1v-fg-faint:            rgba(226,234,224,0.28);
+  --v1v-bg:                  #0d110d;
+  --v1v-bg-overlay:          rgba(17,22,17,0.96);
+  --v1v-bg-overlay-heavy:    rgba(14,19,14,0.98);
+  --v1v-bg-overlay-full:     rgba(13,17,13,0.97);
+  --v1v-bg-card:             #151b15;
+  --v1v-surface-1:           #1b241b;
+  --v1v-surface-2:           #212b20;
+  --v1v-fg:                  #edf0e6;
+  --v1v-fg-muted:            rgba(237,240,230,0.56);
+  --v1v-fg-faint:            rgba(237,240,230,0.3);
 
-  /* Green — biodiversity */
-  --v1v-green:               #2EA80F;
-  --v1v-green-muted:         rgba(46,168,15,0.65);
-  --v1v-green-faint:         rgba(46,168,15,0.42);
-  --v1v-green-dim:           rgba(46,168,15,0.32);
-  --v1v-green-ghost:         rgba(46,168,15,0.14);
-  --v1v-green-bg:            rgba(46,168,15,0.08);
-  --v1v-green-bg-light:      rgba(46,168,15,0.04);
-  --v1v-green-bg-subtle:     rgba(46,168,15,0.06);
+  /* Moss — biodiversity */
+  --v1v-green:               #7da05a;
+  --v1v-green-muted:         rgba(125,160,90,0.7);
+  --v1v-green-faint:         rgba(125,160,90,0.46);
+  --v1v-green-dim:           rgba(125,160,90,0.34);
+  --v1v-green-ghost:         rgba(125,160,90,0.16);
+  --v1v-green-bg:            rgba(125,160,90,0.1);
+  --v1v-green-bg-light:      rgba(125,160,90,0.05);
+  --v1v-green-bg-subtle:     rgba(125,160,90,0.08);
 
-  /* Blue — zones */
-  --v1v-blue:                #3B7DE8;
-  --v1v-blue-muted:          rgba(59,125,232,0.65);
-  --v1v-blue-bg:             rgba(59,125,232,0.07);
-  --v1v-blue-border:         rgba(59,125,232,0.18);
+  /* River — observation */
+  --v1v-blue:                #6f8fa1;
+  --v1v-blue-muted:          rgba(111,143,161,0.68);
+  --v1v-blue-bg:             rgba(111,143,161,0.09);
+  --v1v-blue-border:         rgba(111,143,161,0.22);
 
   /* Violet — badges */
-  --v1v-violet:              #7C3AED;
-  --v1v-violet-bg:           rgba(124,58,237,0.07);
-  --v1v-violet-border:       rgba(124,58,237,0.22);
+  --v1v-violet:              #7a6ca8;
+  --v1v-violet-bg:           rgba(122,108,168,0.09);
+  --v1v-violet-border:       rgba(122,108,168,0.25);
 
-  /* Amber — victory */
-  --v1v-amber:               #C49A0A;
-  --v1v-amber-bg:            rgba(196,154,10,0.07);
-  --v1v-amber-border:        rgba(196,154,10,0.22);
+  /* Pollen — reference */
+  --v1v-amber:               #b58a52;
+  --v1v-amber-bg:            rgba(181,138,82,0.1);
+  --v1v-amber-border:        rgba(181,138,82,0.28);
 
   /* Danger */
   --v1v-danger:              rgba(208,48,48,0.9);
@@ -71,24 +71,24 @@ button, a, nav * {
   --v1v-danger-text:         rgba(208,48,48,0.65);
 
   /* Rarity chromatic system */
-  --rarity-commune-dot:               #2EA80F;
-  --rarity-commune-bg:                rgba(46,168,15,0.05);
-  --rarity-commune-border:            rgba(46,168,15,0.15);
-  --rarity-peu-commune-dot:           #3B7DE8;
-  --rarity-peu-commune-bg:            rgba(59,125,232,0.07);
-  --rarity-peu-commune-border:        rgba(59,125,232,0.22);
-  --rarity-rare-dot:                  #7C3AED;
-  --rarity-rare-bg:                   rgba(124,58,237,0.07);
-  --rarity-rare-border:               rgba(124,58,237,0.28);
-  --rarity-legendaire-dot:            #C49A0A;
-  --rarity-legendaire-bg:             rgba(196,154,10,0.09);
-  --rarity-legendaire-border:         rgba(196,154,10,0.45);
-  --rarity-legendaire-border-strong:  rgba(196,154,10,0.7);
+  --rarity-commune-dot:               #7da05a;
+  --rarity-commune-bg:                rgba(125,160,90,0.07);
+  --rarity-commune-border:            rgba(125,160,90,0.18);
+  --rarity-peu-commune-dot:           #6f8fa1;
+  --rarity-peu-commune-bg:            rgba(111,143,161,0.09);
+  --rarity-peu-commune-border:        rgba(111,143,161,0.24);
+  --rarity-rare-dot:                  #7a6ca8;
+  --rarity-rare-bg:                   rgba(122,108,168,0.09);
+  --rarity-rare-border:               rgba(122,108,168,0.28);
+  --rarity-legendaire-dot:            #b58a52;
+  --rarity-legendaire-bg:             rgba(181,138,82,0.11);
+  --rarity-legendaire-border:         rgba(181,138,82,0.45);
+  --rarity-legendaire-border-strong:  rgba(181,138,82,0.68);
 
   /* Aliases */
   --card-bg:  var(--v1v-bg-card);
-  --warning:  #C49A0A;
-  --success:  #2EA80F;
+  --warning:  #b58a52;
+  --success:  #7da05a;
 }
 
 /* ─── Base ────────────────────────────────────────────────────────────────── */
@@ -119,8 +119,8 @@ h1, h2, h3, h4, h5, h6 {
 /* ─── Scrollbar ───────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar         { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track   { background: transparent; }
-::-webkit-scrollbar-thumb   { background: rgba(57,184,20,0.3); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(57,184,20,0.55); }
+::-webkit-scrollbar-thumb   { background: rgba(125,160,90,0.34); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(125,160,90,0.58); }
 
 /* ─── Inputs ──────────────────────────────────────────────────────────────── */
 input, textarea, select {
@@ -146,9 +146,9 @@ input:focus, textarea:focus, select:focus {
 .loading-skeleton {
   background: linear-gradient(
     90deg,
-    rgba(57,184,20,0.04) 25%,
-    rgba(57,184,20,0.09) 50%,
-    rgba(57,184,20,0.04) 75%
+    rgba(125,160,90,0.05) 25%,
+    rgba(125,160,90,0.11) 50%,
+    rgba(125,160,90,0.05) 75%
   );
   background-size: 200% 100%;
   animation: loading 1.5s infinite;

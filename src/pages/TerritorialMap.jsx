@@ -321,15 +321,19 @@ export default function TerritorialMap() {
   return (
     <div className="min-h-screen" style={{ background: "var(--v1v-bg)", color: "var(--v1v-fg)" }}>
 
-      {/* Header — Minimal */}
+      {/* Header — Atlas */}
       <div
         className="sticky top-0 z-20 px-4 pt-4 pb-3"
-        style={{ background: "var(--v1v-bg-overlay-heavy)", borderBottom: "1px solid rgba(255,255,255,0.03)" }}
+        style={{
+          background: "linear-gradient(180deg, rgba(18,23,18,0.97) 0%, rgba(14,19,14,0.92) 100%)",
+          borderBottom: "1px solid rgba(125,160,90,0.12)",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+        }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <MapPin className="w-3 h-3" style={{ color: "var(--v1v-green)" }} />
-            <p className="text-[9px] font-black uppercase tracking-[0.25em]" style={{ color: "var(--v1v-fg-faint)" }}>Carte du vivant</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.25em]" style={{ color: "var(--v1v-fg-faint)" }}>Atlas du vivant</p>
           </div>
           <button
             onClick={handleSync}
@@ -347,7 +351,12 @@ export default function TerritorialMap() {
       {/* Grid Map — Visible grid + zones */}
       <div
         className="relative overflow-hidden"
-        style={{ height: "calc(100vh - 140px - env(safe-area-inset-bottom))", cursor: "grab", userSelect: "none" }}
+        style={{
+          height: "calc(100vh - 140px - env(safe-area-inset-bottom))",
+          cursor: "grab",
+          userSelect: "none",
+          background: "radial-gradient(circle at 50% 30%, rgba(125,160,90,0.08) 0%, rgba(13,17,13,0) 55%), linear-gradient(180deg, rgba(20,25,20,0.65) 0%, rgba(11,14,11,0.25) 100%)",
+        }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -356,13 +365,13 @@ export default function TerritorialMap() {
         {/* Grid background */}
         <svg
           className="absolute inset-0 pointer-events-none"
-          style={{ opacity: 0.06 }}
+          style={{ opacity: 0.12 }}
           width="100%"
           height="100%"
         >
           <defs>
             <pattern id="gridlines" width={PX_PER_ZONE} height={PX_PER_ZONE} patternUnits="userSpaceOnUse">
-              <path d={`M ${PX_PER_ZONE} 0 L 0 0 0 ${PX_PER_ZONE}`} fill="none" stroke="#2EA80F" strokeWidth="0.5" />
+              <path d={`M ${PX_PER_ZONE} 0 L 0 0 0 ${PX_PER_ZONE}`} fill="none" stroke="rgba(125,160,90,0.55)" strokeWidth="0.5" />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#gridlines)" />
@@ -398,23 +407,23 @@ export default function TerritorialMap() {
             if (isOwned) {
               // Zone documentée : présence dorée chaleureuse
               bg = isSelected
-                ? "linear-gradient(145deg, rgba(196,154,10,0.6) 0%, rgba(255,215,0,0.28) 45%, rgba(120,78,0,0.2) 100%)"
-                : "linear-gradient(145deg, rgba(196,154,10,0.42) 0%, rgba(255,215,0,0.2) 45%, rgba(120,78,0,0.16) 100%)";
-              border = isSelected ? "rgba(255,215,0,0.95)" : "rgba(196,154,10,0.82)";
+                ? "linear-gradient(145deg, rgba(181,138,82,0.46) 0%, rgba(222,195,145,0.22) 45%, rgba(99,75,45,0.18) 100%)"
+                : "linear-gradient(145deg, rgba(181,138,82,0.34) 0%, rgba(222,195,145,0.16) 45%, rgba(99,75,45,0.14) 100%)";
+              border = isSelected ? "rgba(222,195,145,0.94)" : "rgba(181,138,82,0.76)";
               boxShadow = isSelected
-                ? "0 0 0 1px rgba(255,215,0,0.55), 0 0 28px rgba(255,215,0,0.52), inset 0 0 34px rgba(255,215,0,0.18)"
-                : "0 0 20px rgba(196,154,10,0.5), inset 0 0 28px rgba(255,215,0,0.12)";
+                ? "0 0 0 1px rgba(222,195,145,0.42), 0 0 22px rgba(181,138,82,0.34), inset 0 0 24px rgba(222,195,145,0.12)"
+                : "0 0 16px rgba(181,138,82,0.24), inset 0 0 20px rgba(222,195,145,0.08)";
             } else if (isConquerable) {
-              bg = "rgba(46,168,15,0.14)";
-              border = "rgba(46,168,15,0.45)";
-              boxShadow = "0 0 8px rgba(46,168,15,0.2)";
+              bg = "rgba(125,160,90,0.16)";
+              border = "rgba(125,160,90,0.4)";
+              boxShadow = "0 0 8px rgba(125,160,90,0.12)";
             } else if (isFree) {
-              bg = "rgba(59,125,232,0.08)";
-              border = "rgba(59,125,232,0.25)";
+              bg = "rgba(111,143,161,0.08)";
+              border = "rgba(111,143,161,0.25)";
               boxShadow = "none";
             } else {
-              bg = "rgba(226,234,224,0.04)";
-              border = "rgba(226,234,224,0.12)";
+              bg = "rgba(237,240,230,0.035)";
+              border = "rgba(237,240,230,0.1)";
               boxShadow = "none";
             }
             if (isUser) {
@@ -473,12 +482,12 @@ export default function TerritorialMap() {
                           height: 22,
                           borderRadius: 999,
                           background: isSelected
-                            ? "radial-gradient(circle, rgba(255,245,190,0.98) 0%, rgba(255,215,0,0.92) 55%, rgba(196,154,10,0.96) 100%)"
-                            : "radial-gradient(circle, rgba(255,237,160,0.96) 0%, rgba(255,215,0,0.86) 55%, rgba(196,154,10,0.9) 100%)",
-                          border: "1px solid rgba(255,240,170,0.95)",
+                            ? "radial-gradient(circle, rgba(240,224,196,0.98) 0%, rgba(212,180,132,0.92) 55%, rgba(181,138,82,0.96) 100%)"
+                            : "radial-gradient(circle, rgba(234,216,184,0.96) 0%, rgba(212,180,132,0.86) 55%, rgba(181,138,82,0.9) 100%)",
+                          border: "1px solid rgba(236,219,188,0.95)",
                           boxShadow: isSelected
-                            ? "0 0 22px rgba(255,215,0,0.6), 0 4px 14px rgba(0,0,0,0.35)"
-                            : "0 0 16px rgba(255,215,0,0.45), 0 4px 12px rgba(0,0,0,0.28)",
+                            ? "0 0 20px rgba(212,180,132,0.45), 0 4px 14px rgba(0,0,0,0.35)"
+                            : "0 0 14px rgba(181,138,82,0.34), 0 4px 12px rgba(0,0,0,0.28)",
                         }}
                       >
                         <Compass style={{ width: 12, height: 12, color: "#5F4100" }} />
@@ -487,24 +496,24 @@ export default function TerritorialMap() {
                     <div
                       className="absolute -inset-[4px] pointer-events-none"
                       style={{
-                        border: `2px solid ${isSelected ? "rgba(255,235,150,0.95)" : "rgba(255,215,0,0.58)"}`,
-                        boxShadow: "0 0 18px rgba(255,215,0,0.28)",
+                        border: `2px solid ${isSelected ? "rgba(236,219,188,0.88)" : "rgba(212,180,132,0.46)"}`,
+                        boxShadow: "0 0 16px rgba(181,138,82,0.22)",
                         animation: "ownedZonePulse 2.4s ease-in-out infinite",
                       }}
                     />
                     <div
                       className="absolute inset-[3px] pointer-events-none"
                       style={{
-                        border: `1px solid ${isSelected ? "rgba(255,235,150,0.7)" : "rgba(255,235,150,0.35)"}`,
-                        boxShadow: isSelected ? "inset 0 0 18px rgba(255,235,150,0.16)" : "none",
+                        border: `1px solid ${isSelected ? "rgba(236,219,188,0.58)" : "rgba(236,219,188,0.24)"}`,
+                        boxShadow: isSelected ? "inset 0 0 18px rgba(236,219,188,0.12)" : "none",
                       }}
                     />
                     <div
                       className="absolute top-1 left-1 px-1.5 py-[1px] text-[6px] font-black tracking-[0.18em]"
                       style={{
-                        background: "rgba(255,215,0,0.14)",
-                        color: "rgba(255,235,150,0.95)",
-                        border: "1px solid rgba(255,215,0,0.28)",
+                        background: "rgba(181,138,82,0.16)",
+                        color: "rgba(242,229,205,0.92)",
+                        border: "1px solid rgba(212,180,132,0.24)",
                         textTransform: "uppercase",
                       }}
                     >

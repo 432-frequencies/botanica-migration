@@ -1,30 +1,33 @@
 import { useEffect, useRef, useState } from 'react';
-import { Leaf, Bird, Mountain, Sprout, Bug, TreeDeciduous } from 'lucide-react';
 
 /**
  * Canvas haute performance pour visualiser les espèces sur une carte
- * Design futuriste Tesla avec icônes colorées SVG
+ * Esthétique atlas du vivant, sobre et lisible
  * Supporte 10,000+ points à 60 FPS
  */
 
-// Hash couleur unique par nom d'espèce
-function getSpeciesColor(speciesName) {
-  let hash = 0;
-  for (let i = 0; i < speciesName.length; i++) {
-    hash = speciesName.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 75%, 60%)`;
+function getSpeciesColor(species = {}) {
+  const palette = {
+    plant: '#7DA05A',
+    tree: '#5E7C4A',
+    bird: '#6F8FA1',
+    fungus: '#A06F7D',
+    insect: '#B58A52',
+    arachnid: '#9B6A4D',
+    rock: '#8D948C',
+  };
+
+  return palette[species.category] || palette.plant;
 }
 
-// Icônes par catégorie
 const CATEGORY_ICONS = {
-  plant: { char: '🌿', size: 12, color: '#4ADE80' },
-  bird: { char: '🦅', size: 14, color: '#60A5FA' },
-  tree: { char: '🌳', size: 16, color: '#34D399' },
-  fungus: { char: '🍄', size: 12, color: '#F472B6' },
-  insect: { char: '🦋', size: 10, color: '#FCD34D' },
-  rock: { char: '⛰️', size: 14, color: '#94A3B8' },
+  plant: { char: '🌿', size: 12 },
+  bird: { char: '🦅', size: 14 },
+  tree: { char: '🌳', size: 16 },
+  fungus: { char: '🍄', size: 12 },
+  insect: { char: '🦋', size: 10 },
+  arachnid: { char: '🕷️', size: 11 },
+  rock: { char: '⛰️', size: 14 },
 };
 
 export default function SpeciesMapCanvas({
@@ -41,7 +44,6 @@ export default function SpeciesMapCanvas({
   const [hoveredSpecies, setHoveredSpecies] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const animationFrameRef = useRef(null);
-  const particlesRef = useRef([]);
 
   // Conversion lat/lng vers pixels canvas
   const latLngToPixel = (lat, lng) => {
@@ -79,7 +81,7 @@ export default function SpeciesMapCanvas({
     }
 
     const icon = CATEGORY_ICONS[species.category] || CATEGORY_ICONS.plant;
-    const color = getSpeciesColor(species.common_name);
+    const color = getSpeciesColor(species);
     const size = isReference ? icon.size : icon.size * 0.6;
 
     // Glow pour espèces rares
@@ -128,13 +130,30 @@ export default function SpeciesMapCanvas({
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-
     // Clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Background grid (style Tesla)
-    ctx.strokeStyle = 'rgba(45,122,31,0.08)';
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, '#121612');
+    gradient.addColorStop(0.55, '#101510');
+    gradient.addColorStop(1, '#0d110d');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const radial = ctx.createRadialGradient(
+      canvas.width * 0.5,
+      canvas.height * 0.4,
+      0,
+      canvas.width * 0.5,
+      canvas.height * 0.4,
+      canvas.width * 0.6,
+    );
+    radial.addColorStop(0, 'rgba(125,160,90,0.06)');
+    radial.addColorStop(1, 'rgba(125,160,90,0)');
+    ctx.fillStyle = radial;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = 'rgba(125,160,90,0.1)';
     ctx.lineWidth = 1;
     const gridSize = 50;
     for (let x = 0; x < canvas.width; x += gridSize) {
@@ -244,7 +263,7 @@ export default function SpeciesMapCanvas({
             top: mousePos.y - 40,
             padding: '8px 12px',
             background: 'rgba(0,0,0,0.9)',
-            border: `1px solid ${getSpeciesColor(hoveredSpecies.common_name)}`,
+            border: `1px solid ${getSpeciesColor(hoveredSpecies)}`,
             borderRadius: '8px',
             fontSize: '11px',
             fontWeight: 'bold',
@@ -252,10 +271,10 @@ export default function SpeciesMapCanvas({
             pointerEvents: 'none',
             zIndex: 9999,
             backdropFilter: 'blur(8px)',
-            boxShadow: `0 4px 12px ${getSpeciesColor(hoveredSpecies.common_name)}40`,
+            boxShadow: `0 4px 12px ${getSpeciesColor(hoveredSpecies)}40`,
           }}
         >
-          <div style={{ color: getSpeciesColor(hoveredSpecies.common_name), marginBottom: '2px' }}>
+          <div style={{ color: getSpeciesColor(hoveredSpecies), marginBottom: '2px' }}>
             {hoveredSpecies.common_name}
           </div>
           {hoveredSpecies.scientific_name && (

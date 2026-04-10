@@ -20,6 +20,12 @@ const ZONE_RADIUS_KM = 2; // Rayon de recherche en km
 const PHOTO_CACHE_PREFIX = 'w1ld-reference-photo:v2:';
 const photoCache = new Map();
 
+function upgradeReferencePhotoUrl(value) {
+  const nextUrl = normalizeRemoteImageUrl(value);
+  if (!nextUrl) return null;
+  return nextUrl.replace(/\/(square|small|medium)\.(jpe?g|png|webp)(\?|$)/i, '/large.$2$3');
+}
+
 function isRemoteImageUrl(value) {
   return typeof value === 'string' && /^https?:\/\//i.test(value);
 }
@@ -32,10 +38,10 @@ function normalizeRemoteImageUrl(value) {
 function resolveSpeciesPhotoUrl(species) {
   if (!species) return null;
   return (
-    normalizeRemoteImageUrl(species.photo_url) ||
-    normalizeRemoteImageUrl(species.image_url) ||
-    normalizeRemoteImageUrl(species.thumbnail_url) ||
-    (isRemoteImageUrl(species.description) ? normalizeRemoteImageUrl(species.description) : null)
+    upgradeReferencePhotoUrl(species.photo_url) ||
+    upgradeReferencePhotoUrl(species.image_url) ||
+    upgradeReferencePhotoUrl(species.thumbnail_url) ||
+    (isRemoteImageUrl(species.description) ? upgradeReferencePhotoUrl(species.description) : null)
   );
 }
 
@@ -128,7 +134,7 @@ async function resolveDynamicSpeciesPhoto(species) {
   if (!taxon?.id) return null;
 
   const photoResult = await getTaxonPhotos(taxon.id, 1);
-  const nextPhoto = normalizeRemoteImageUrl(photoResult?.photos?.[0]?.photo_url || photoResult?.photos?.[0]?.thumbnail_url);
+  const nextPhoto = upgradeReferencePhotoUrl(photoResult?.photos?.[0]?.photo_url || photoResult?.photos?.[0]?.thumbnail_url);
 
   return {
     photo_url: nextPhoto || null,
@@ -528,25 +534,25 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
       data-zone-explorer
       className="fixed inset-0 z-[9999] flex flex-col"
       style={{
-        background: 'linear-gradient(180deg, #000000 0%, #0A0A0A 100%)',
+        background: 'linear-gradient(180deg, #111711 0%, #0d110d 45%, #0a0d0a 100%)',
       }}
     >
       {/* Header */}
       <div
         className="flex-shrink-0 px-5 py-4"
         style={{
-          background: 'linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 100%)',
+          background: 'linear-gradient(180deg, rgba(20,26,18,0.97) 0%, rgba(16,21,15,0.86) 100%)',
           backdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(45,122,31,0.2)',
+          borderBottom: '1px solid rgba(125,160,90,0.18)',
         }}
       >
         <div className="flex items-center justify-between mb-3">
           <div>
             <p
               className="text-[8px] font-black uppercase tracking-[0.5em] mb-1"
-              style={{ color: 'rgba(45,122,31,0.5)' }}
+              style={{ color: 'rgba(125,160,90,0.52)' }}
             >
-              Documentation locale
+              Atlas local
             </p>
             <h1
               className="text-xl font-black uppercase tracking-wider"
@@ -600,17 +606,17 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
               }}
               className="text-left transition-all active:scale-95"
               style={{
-                background: showListPanel === 'discoveries' ? 'rgba(59,125,232,0.2)' : 'rgba(59,125,232,0.1)',
-                border: `2px solid ${showListPanel === 'discoveries' ? 'rgba(59,125,232,0.5)' : 'rgba(59,125,232,0.3)'}`,
+                background: showListPanel === 'discoveries' ? 'rgba(111,143,161,0.18)' : 'rgba(111,143,161,0.08)',
+                border: `2px solid ${showListPanel === 'discoveries' ? 'rgba(111,143,161,0.42)' : 'rgba(111,143,161,0.24)'}`,
                 borderRadius: '8px',
                 padding: '8px',
               }}
             >
-              <Sparkles className="w-3 h-3 mb-1" style={{ color: '#3B7DE8' }} />
-              <div className="text-lg font-black" style={{ color: '#3B7DE8' }}>
+              <Sparkles className="w-3 h-3 mb-1" style={{ color: 'var(--v1v-blue)' }} />
+              <div className="text-lg font-black" style={{ color: 'var(--v1v-blue)' }}>
                 {displayStats.users}
               </div>
-              <div className="text-[8px] uppercase tracking-wider" style={{ color: 'rgba(59,125,232,0.6)' }}>
+              <div className="text-[8px] uppercase tracking-wider" style={{ color: 'var(--v1v-blue-muted)' }}>
                 {showOnlyMyDiscoveries ? 'Mes Scans' : 'Découvertes'}
               </div>
             </button>
@@ -623,11 +629,11 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                 padding: '8px',
               }}
             >
-              <Users className="w-3 h-3 mb-1" style={{ color: '#C49A0A' }} />
-              <div className="text-lg font-black" style={{ color: '#C49A0A' }}>
+              <Users className="w-3 h-3 mb-1" style={{ color: 'var(--v1v-amber)' }} />
+              <div className="text-lg font-black" style={{ color: 'var(--v1v-amber)' }}>
                 {displayStats.uniqueUsers}
               </div>
-              <div className="text-[8px] uppercase tracking-wider" style={{ color: 'rgba(196,154,10,0.6)' }}>
+              <div className="text-[8px] uppercase tracking-wider" style={{ color: 'rgba(181,138,82,0.66)' }}>
                 Explorateurs
               </div>
             </div>
@@ -636,7 +642,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
       </div>
 
       {/* Carte Canvas */}
-      <div className="flex-1 relative" style={{ background: '#0A0A0A' }}>
+      <div className="flex-1 relative" style={{ background: 'linear-gradient(180deg, #141914 0%, #0d110d 100%)' }}>
         {loading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <div
@@ -730,8 +736,8 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                 onClick={toggleMyDiscoveries}
                 className="min-h-[44px] px-4 flex items-center gap-2"
                 style={{
-                  background: showOnlyMyDiscoveries ? 'rgba(59,125,232,0.2)' : 'rgba(255,255,255,0.05)',
-                  border: `1px solid ${showOnlyMyDiscoveries ? 'rgba(59,125,232,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                  background: showOnlyMyDiscoveries ? 'rgba(111,143,161,0.18)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${showOnlyMyDiscoveries ? 'rgba(111,143,161,0.4)' : 'rgba(255,255,255,0.1)'}`,
                   borderRadius: '8px',
                   backdropFilter: 'blur(12px)',
                   transition: 'all 0.2s ease',
@@ -739,11 +745,11 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
               >
                 <Filter
                   className="w-4 h-4"
-                  style={{ color: showOnlyMyDiscoveries ? '#3B7DE8' : 'rgba(255,255,255,0.7)' }}
+                  style={{ color: showOnlyMyDiscoveries ? 'var(--v1v-blue)' : 'rgba(255,255,255,0.7)' }}
                 />
                 <span
                   className="text-[10px] font-black uppercase tracking-wider"
-                  style={{ color: showOnlyMyDiscoveries ? '#3B7DE8' : 'rgba(255,255,255,0.7)' }}
+                  style={{ color: showOnlyMyDiscoveries ? 'var(--v1v-blue)' : 'rgba(255,255,255,0.7)' }}
                 >
                   Mes découvertes
                 </span>
@@ -781,8 +787,8 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" style={{ color: '#3B7DE8' }} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: '#3B7DE8' }}>
+                    <Sparkles className="w-4 h-4" style={{ color: 'var(--v1v-blue)' }} />
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: 'var(--v1v-blue)' }}>
                       Découvertes
                     </span>
                   </>
@@ -912,8 +918,8 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                         }}
                         className="w-full text-left transition-all active:scale-98"
                         style={{
-                          background: 'rgba(59,125,232,0.08)',
-                          border: '1px solid rgba(59,125,232,0.2)',
+                          background: 'rgba(111,143,161,0.08)',
+                          border: '1px solid rgba(111,143,161,0.18)',
                           borderRadius: '10px',
                           overflow: 'hidden',
                         }}
@@ -928,7 +934,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                                 height: 56,
                                 borderRadius: '8px',
                                 overflow: 'hidden',
-                                background: 'rgba(59,125,232,0.1)',
+                                background: 'rgba(111,143,161,0.1)',
                               }}
                             >
                               <img
@@ -952,7 +958,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                                 width: 56,
                                 height: 56,
                                 borderRadius: '8px',
-                                background: 'rgba(59,125,232,0.15)',
+                                background: 'rgba(111,143,161,0.15)',
                                 fontSize: '24px',
                               }}
                             >
@@ -962,7 +968,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
 
                           {/* Info section */}
                           <div className="flex-1 min-w-0 py-2">
-                            <p className="text-[11px] font-black truncate" style={{ color: '#3B7DE8' }}>
+                            <p className="text-[11px] font-black truncate" style={{ color: 'var(--v1v-blue)' }}>
                               {discovery.common_name}
                             </p>
                             {discovery.user_name && (
@@ -974,8 +980,8 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
 
                           {/* Distance */}
                           <div className="flex-shrink-0 text-right pr-3">
-                            <MapPin className="w-3 h-3 mb-0.5 inline" style={{ color: 'rgba(59,125,232,0.6)' }} />
-                            <p className="text-[9px] font-black" style={{ color: 'rgba(59,125,232,0.8)' }}>
+                            <MapPin className="w-3 h-3 mb-0.5 inline" style={{ color: 'var(--v1v-blue-muted)' }} />
+                            <p className="text-[9px] font-black" style={{ color: 'var(--v1v-blue)' }}>
                               {discovery.distance < 1000
                                 ? `${Math.round(discovery.distance)}m`
                                 : `${(discovery.distance / 1000).toFixed(1)}km`}
@@ -1002,16 +1008,16 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
           <div
             className="absolute bottom-4 left-4 right-4"
             style={{
-              background: 'rgba(0,0,0,0.85)',
+              background: 'rgba(18,22,18,0.88)',
               backdropFilter: 'blur(12px)',
-              border: '1px solid rgba(45,122,31,0.3)',
+              border: '1px solid rgba(125,160,90,0.22)',
               borderRadius: '12px',
               padding: '12px',
             }}
           >
             <p
               className="text-[8px] font-black uppercase tracking-[0.4em] mb-2"
-              style={{ color: 'rgba(45,122,31,0.6)' }}
+              style={{ color: 'rgba(125,160,90,0.6)' }}
             >
               Repères
             </p>
@@ -1033,7 +1039,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                     width: 8,
                     height: 8,
                     borderRadius: '50%',
-                    background: '#3B7DE8',
+                    background: 'var(--v1v-blue)',
                     border: '2px solid rgba(255,255,255,0.8)',
                   }}
                 />
@@ -1050,7 +1056,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
           <div
             className="absolute inset-0 z-30 flex items-end"
             style={{
-              background: 'rgba(0,0,0,0.38)',
+              background: 'rgba(7,10,7,0.42)',
               backdropFilter: 'blur(8px)',
             }}
             onClick={() => setSelectedSpecies(null)}
@@ -1058,22 +1064,22 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
             <div
               className="w-full mx-3 mb-3 overflow-hidden"
               style={{
-                background: 'rgba(0,0,0,0.96)',
+                background: 'linear-gradient(180deg, rgba(19,24,18,0.97) 0%, rgba(13,17,13,0.97) 100%)',
                 backdropFilter: 'blur(24px)',
-                border: `1px solid ${selectedSpecies.user_name ? 'rgba(59,125,232,0.28)' : 'rgba(45,122,31,0.28)'}`,
+                border: `1px solid ${selectedSpecies.user_name ? 'rgba(111,143,161,0.28)' : 'rgba(125,160,90,0.24)'}`,
                 borderRadius: '22px',
-                boxShadow: selectedSpecies.user_name ? '0 18px 50px rgba(59,125,232,0.12)' : '0 18px 50px rgba(45,122,31,0.12)',
+                boxShadow: selectedSpecies.user_name ? '0 18px 50px rgba(111,143,161,0.12)' : '0 18px 50px rgba(125,160,90,0.12)',
                 maxHeight: '72vh',
                 overflowY: 'auto',
               }}
               onClick={(event) => event.stopPropagation()}
             >
-            <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4" style={{ background: 'rgba(0,0,0,0.92)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4" style={{ background: 'rgba(17,22,17,0.94)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <div>
                 <p className="text-[8px] font-black uppercase tracking-[0.32em]" style={{ color: 'rgba(255,255,255,0.35)' }}>
                   {selectedSpecies.user_name ? 'Observation terrain' : 'Référence locale'}
                 </p>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] mt-1" style={{ color: selectedSpecies.user_name ? '#3B7DE8' : 'var(--v1v-green)' }}>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] mt-1" style={{ color: selectedSpecies.user_name ? 'var(--v1v-blue)' : 'var(--v1v-green)' }}>
                   {selectedSpecies.user_name ? selectedSpecies.user_name : zoneName || zoneId}
                 </p>
               </div>
@@ -1094,7 +1100,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
               <h3
                 className="font-black uppercase tracking-[0.06em]"
                 style={{
-                  color: selectedSpecies.user_name ? '#3B7DE8' : 'var(--v1v-green)',
+                  color: selectedSpecies.user_name ? 'var(--v1v-blue)' : 'var(--v1v-green)',
                   fontSize: 24,
                   lineHeight: 1.05,
                 }}
@@ -1111,8 +1117,9 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                   className="mb-4 overflow-hidden"
                   style={{
                     borderRadius: '16px',
-                    border: `1px solid ${selectedSpecies.user_name ? 'rgba(59,125,232,0.24)' : 'rgba(45,122,31,0.24)'}`,
-                    background: 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${selectedSpecies.user_name ? 'rgba(111,143,161,0.24)' : 'rgba(125,160,90,0.24)'}`,
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.02) 100%)',
+                    aspectRatio: '4 / 3',
                   }}
                 >
                   <img
@@ -1120,9 +1127,11 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                     alt={selectedSpeciesCommonName}
                     style={{
                       width: '100%',
-                      height: 220,
-                      objectFit: 'cover',
+                      height: '100%',
+                      objectFit: 'contain',
+                      objectPosition: 'center',
                       display: 'block',
+                      background: 'rgba(8,10,8,0.55)',
                     }}
                   />
                 </div>
@@ -1149,9 +1158,9 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                 <span
                   className="px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.18em]"
                   style={{
-                    background: selectedSpecies.user_name ? 'rgba(59,125,232,0.14)' : 'rgba(45,122,31,0.14)',
-                    border: `1px solid ${selectedSpecies.user_name ? 'rgba(59,125,232,0.25)' : 'rgba(45,122,31,0.25)'}`,
-                    color: selectedSpecies.user_name ? '#3B7DE8' : 'var(--v1v-green)',
+                    background: selectedSpecies.user_name ? 'rgba(111,143,161,0.14)' : 'rgba(125,160,90,0.14)',
+                    border: `1px solid ${selectedSpecies.user_name ? 'rgba(111,143,161,0.25)' : 'rgba(125,160,90,0.25)'}`,
+                    color: selectedSpecies.user_name ? 'var(--v1v-blue)' : 'var(--v1v-green)',
                   }}
                 >
                   {selectedSpecies.user_name ? 'Observation terrain' : 'Référence locale'}
@@ -1173,11 +1182,11 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
               <div
                 className="flex items-center gap-2 py-2 px-3 mb-3"
                 style={{
-                  background: 'rgba(45,122,31,0.1)',
-                  border: '1px solid rgba(45,122,31,0.3)',
-                  borderRadius: '10px',
-                }}
-              >
+                    background: 'rgba(125,160,90,0.08)',
+                    border: '1px solid rgba(125,160,90,0.22)',
+                    borderRadius: '10px',
+                  }}
+                >
                 <MapPin className="w-4 h-4" style={{ color: 'var(--v1v-green)' }} />
                 <div>
                   <p className="text-[10px] font-black" style={{ color: 'var(--v1v-green)' }}>
@@ -1187,7 +1196,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                       return dist < 1000 ? `${Math.round(dist)}m` : `${(dist / 1000).toFixed(1)}km`;
                     })()}
                   </p>
-                  <p className="text-[8px]" style={{ color: 'rgba(45,122,31,0.6)' }}>
+                  <p className="text-[8px]" style={{ color: 'rgba(125,160,90,0.62)' }}>
                     depuis le coeur de la zone
                   </p>
                 </div>
@@ -1197,13 +1206,13 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                 <div
                   className="flex items-center gap-2 py-2 px-3 mb-3"
                   style={{
-                    background: 'rgba(59,125,232,0.1)',
-                    border: '1px solid rgba(59,125,232,0.3)',
+                    background: 'rgba(111,143,161,0.1)',
+                    border: '1px solid rgba(111,143,161,0.3)',
                     borderRadius: '10px',
                   }}
                 >
-                  <Users className="w-3 h-3" style={{ color: '#3B7DE8' }} />
-                  <span className="text-[10px] font-bold" style={{ color: '#3B7DE8' }}>
+                  <Users className="w-3 h-3" style={{ color: 'var(--v1v-blue)' }} />
+                  <span className="text-[10px] font-bold" style={{ color: 'var(--v1v-blue)' }}>
                     Découvert par {selectedSpecies.user_name}
                   </span>
                 </div>
