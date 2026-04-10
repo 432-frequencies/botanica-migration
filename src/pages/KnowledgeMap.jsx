@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/api/supabaseClient";
-import { MapPin, Navigation } from "lucide-react";
+import { Navigation } from "lucide-react";
 import KnowledgeDetailModal from "@/components/knowledge/KnowledgeDetailModal";
 
 const CATEGORIES = [

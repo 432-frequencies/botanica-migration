@@ -1,18 +1,149 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Sparkles, Users, Database, Zap, MapPin, ChevronRight, Plus, Minus, Filter } from 'lucide-react';
+import { X, Sparkles, Users, Database, MapPin, Plus, Minus, Filter } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
+import { getTaxonPhotos, searchTaxon } from '@/api/inaturalist';
+import { useZoneLabel } from '@/lib/locationMeta';
 import SpeciesMapCanvas from './SpeciesMapCanvas';
 import { feedback } from '@/utils/feedback';
+import { normalizeSpeciesCategory } from '@/lib/species';
+import { resolveDisplayName } from '@/lib/displayName';
+import { getReferenceFallbackLabel, isReferenceSpeciesSuspicious, repairReferenceSpeciesRecord } from '@/lib/referenceTaxonomy';
+import BlockErrorBoundary from '@/components/shared/BlockErrorBoundary';
 
 /**
- * Explorateur de zone ultra-futuriste (style Tesla 2030)
- * Affiche espèces de référence + découvertes utilisateurs
+ * Explorateur de zone
+ * Affiche références locales + observations des utilisateurs
  */
 
 const ZONE_RADIUS_KM = 2; // Rayon de recherche en km
+const PHOTO_CACHE_PREFIX = 'w1ld-reference-photo:v2:';
+const photoCache = new Map();
+
+function isRemoteImageUrl(value) {
+  return typeof value === 'string' && /^https?:\/\//i.test(value);
+}
+
+function normalizeRemoteImageUrl(value) {
+  if (!isRemoteImageUrl(value)) return null;
+  return value.replace(/^http:\/\//i, 'https://');
+}
+
+function resolveSpeciesPhotoUrl(species) {
+  if (!species) return null;
+  return (
+    normalizeRemoteImageUrl(species.photo_url) ||
+    normalizeRemoteImageUrl(species.image_url) ||
+    normalizeRemoteImageUrl(species.thumbnail_url) ||
+    (isRemoteImageUrl(species.description) ? normalizeRemoteImageUrl(species.description) : null)
+  );
+}
+
+function normalizeReferenceKey(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase();
+}
+
+function getReferencePhotoLookup(referenceList = []) {
+  const nextMap = new Map();
+
+  for (const species of referenceList) {
+    const photoUrl = resolveSpeciesPhotoUrl(species);
+    const scientificKey = normalizeReferenceKey(species?.scientific_name);
+    const commonKey = normalizeReferenceKey(species?.common_name);
+
+    if (!photoUrl) continue;
+    if (scientificKey && !nextMap.has(scientificKey)) nextMap.set(scientificKey, photoUrl);
+    if (commonKey && !nextMap.has(commonKey)) nextMap.set(commonKey, photoUrl);
+  }
+
+  return nextMap;
+}
+
+function getReferenceScore(species) {
+  return (
+    (species?.photo_url ? 4 : 0) +
+    (!species?.is_suspicious ? 2 : 0) +
+    (species?.reference_patched ? 1 : 0)
+  );
+}
+
+function dedupeReferenceSpecies(referenceList = []) {
+  const bestEntries = new Map();
+
+  for (const species of referenceList) {
+    const latKey = Number(species?.latitude || 0).toFixed(4);
+    const lngKey = Number(species?.longitude || 0).toFixed(4);
+    const taxonKey = normalizeReferenceKey(species?.scientific_name || species?.common_name || species?.id);
+    const dedupeKey = `${latKey}:${lngKey}:${taxonKey}`;
+    const previous = bestEntries.get(dedupeKey);
+
+    if (!previous || getReferenceScore(species) > getReferenceScore(previous)) {
+      bestEntries.set(dedupeKey, species);
+    }
+  }
+
+  return [...bestEntries.values()];
+}
+
+function getPhotoCacheKey(species) {
+  return String(species?.scientific_name || species?.common_name || species?.id || '')
+    .trim()
+    .toLowerCase();
+}
+
+function readPhotoCache(species) {
+  const cacheKey = getPhotoCacheKey(species);
+  if (!cacheKey) return null;
+
+  const memoryValue = photoCache.get(cacheKey);
+  if (memoryValue) return memoryValue;
+
+  try {
+    const stored = localStorage.getItem(`${PHOTO_CACHE_PREFIX}${cacheKey}`);
+    if (!stored) return null;
+    photoCache.set(cacheKey, stored);
+    return stored;
+  } catch {
+    return null;
+  }
+}
+
+function writePhotoCache(species, photoUrl) {
+  const cacheKey = getPhotoCacheKey(species);
+  if (!cacheKey || !photoUrl) return;
+  photoCache.set(cacheKey, photoUrl);
+  try {
+    localStorage.setItem(`${PHOTO_CACHE_PREFIX}${cacheKey}`, photoUrl);
+  } catch {}
+}
+
+async function resolveDynamicSpeciesPhoto(species) {
+  const searchLabel = species?.scientific_name || species?.common_name;
+  if (!searchLabel) return null;
+
+  const taxonResult = await searchTaxon(searchLabel);
+  const taxon = taxonResult?.taxon;
+  if (!taxon?.id) return null;
+
+  const photoResult = await getTaxonPhotos(taxon.id, 1);
+  const nextPhoto = normalizeRemoteImageUrl(photoResult?.photos?.[0]?.photo_url || photoResult?.photos?.[0]?.thumbnail_url);
+
+  return {
+    photo_url: nextPhoto || null,
+    scientific_name: taxon.name || species?.scientific_name || null,
+    common_name: taxon.preferred_common_name || species?.common_name || getReferenceFallbackLabel(species),
+    category: normalizeSpeciesCategory(species?.category, {
+      ...species,
+      scientific_name: taxon.name || species?.scientific_name || null,
+      common_name: taxon.preferred_common_name || species?.common_name || null,
+    }),
+  };
+}
 
 export default function ZoneExplorer({ zone, onClose, userEmail }) {
+  const zoneId = zone?.zone_id ?? null;
   const [referenceSpecies, setReferenceSpecies] = useState([]);
   const [userDiscoveries, setUserDiscoveries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,10 +152,11 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
   const [zoomLevel, setZoomLevel] = useState(15);
   const [showOnlyMyDiscoveries, setShowOnlyMyDiscoveries] = useState(false);
   const [showListPanel, setShowListPanel] = useState(null); // 'reference', 'discoveries', ou null
+  const { label: zoneName } = useZoneLabel(zoneId);
 
   // Calculer centre de la zone (même logique que ZoneDetailPanel)
   const ZONE_SIZE_DEG = 0.0045; // Une zone = 0.0045° (~500m)
-  const [zLat, zLng] = zone.zone_id.split('_').map(Number);
+  const [zLat, zLng] = zoneId ? zoneId.split('_').map(Number) : [0, 0];
   const centerLat = (zLat + 0.5) * ZONE_SIZE_DEG;
   const centerLng = (zLng + 0.5) * ZONE_SIZE_DEG;
 
@@ -35,8 +167,56 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
 
   // Charger les données
   useEffect(() => {
+    if (!zoneId) return;
     loadZoneData();
-  }, [zone.zone_id]);
+  }, [zoneId]);
+
+  useEffect(() => {
+    if (!selectedSpecies || selectedSpecies.user_name || resolveSpeciesPhotoUrl(selectedSpecies)) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const dynamicSpecies = await resolveDynamicSpeciesPhoto(selectedSpecies);
+        if (cancelled || !dynamicSpecies?.photo_url) return;
+
+        writePhotoCache(selectedSpecies, dynamicSpecies.photo_url);
+        setSelectedSpecies((prev) => (
+          prev?.id === selectedSpecies.id
+            ? {
+                ...prev,
+                ...dynamicSpecies,
+                photo_url: dynamicSpecies.photo_url,
+                common_name: dynamicSpecies.common_name || prev.common_name,
+                scientific_name: dynamicSpecies.scientific_name || prev.scientific_name,
+                category: dynamicSpecies.category || prev.category,
+                is_suspicious: false,
+              }
+            : prev
+        ));
+        setReferenceSpecies((prev) => prev.map((entry) => (
+          entry.id === selectedSpecies.id
+            ? {
+                ...entry,
+                ...dynamicSpecies,
+                photo_url: dynamicSpecies.photo_url,
+                common_name: dynamicSpecies.common_name || entry.common_name,
+                scientific_name: dynamicSpecies.scientific_name || entry.scientific_name,
+                category: dynamicSpecies.category || entry.category,
+                is_suspicious: false,
+              }
+            : entry
+        )));
+      } catch (photoError) {
+        console.warn('[ZoneExplorer] Selected species photo fallback failed:', photoError?.message || photoError);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSpecies]);
 
   // Support scroll wheel pour zoom
   useEffect(() => {
@@ -67,7 +247,13 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
     setLoading(true);
 
     try {
-      console.log('[ZoneExplorer] Loading zone:', zone.zone_id);
+      if (!zoneId) {
+        setReferenceSpecies([]);
+        setUserDiscoveries([]);
+        setStats({ ref: 0, users: 0, uniqueUsers: 0 });
+        return;
+      }
+      console.log('[ZoneExplorer] Loading zone:', zoneId);
       console.log('[ZoneExplorer] Center calculated:', { centerLat, centerLng });
 
       // Calculer les limites géographiques (rayon 2km)
@@ -117,28 +303,73 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
         sampleDisc: discData?.[0],
       });
 
-      // Formatter les découvertes avec nom utilisateur (email jusqu'à @)
+      const referencePhotoLookup = getReferencePhotoLookup(refData || []);
+
+      const normalizedReferenceSpecies = dedupeReferenceSpecies((refData || []).map((species) => {
+        const repairedSpecies = repairReferenceSpeciesRecord(species);
+        const sharedPhoto =
+          referencePhotoLookup.get(normalizeReferenceKey(repairedSpecies.scientific_name)) ||
+          referencePhotoLookup.get(normalizeReferenceKey(repairedSpecies.common_name)) ||
+          null;
+        const photoUrl = resolveSpeciesPhotoUrl(repairedSpecies) || sharedPhoto || readPhotoCache(repairedSpecies);
+        const isSuspicious = isReferenceSpeciesSuspicious(repairedSpecies);
+
+        return {
+          ...repairedSpecies,
+          common_name: repairedSpecies.common_name || getReferenceFallbackLabel(species),
+          photo_url: photoUrl,
+          category: normalizeSpeciesCategory(repairedSpecies.category, repairedSpecies),
+          rarity: repairedSpecies.rarity || 'commune',
+          is_suspicious: isSuspicious,
+        };
+      })).filter((species) => !(species.is_suspicious && !species.photo_url));
+
+      const discoveryEmails = [...new Set((discData || []).map((entry) => entry.user_email).filter(Boolean))];
+      const displayNameMap = new Map();
+
+      if (discoveryEmails.length > 0) {
+        const { data: discoveryProfiles, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('user_email, display_name')
+          .in('user_email', discoveryEmails);
+
+        if (profileError) {
+          console.warn('[ZoneExplorer] Impossible de charger les noms publics:', profileError.message);
+        } else {
+          for (const profile of discoveryProfiles || []) {
+            displayNameMap.set(
+              profile.user_email,
+              resolveDisplayName({
+                displayName: profile.display_name,
+                email: profile.user_email,
+              }),
+            );
+          }
+        }
+      }
+
+      // Formatter les découvertes avec vrai nom public
       const formattedDiscoveries = (discData || []).map(d => ({
         id: d.id,
         common_name: d.common_name,
         scientific_name: d.scientific_name,
         latitude: d.latitude,
         longitude: d.longitude,
-        category: d.category || 'plant',
+        category: normalizeSpeciesCategory(d.category, d),
         rarity: d.rarity || 'commune',
-        photo_url: d.photo_url || d.thumbnail_url, // Utiliser photo ou thumbnail
-        user_name: d.user_email?.split('@')[0] || 'Anonyme',
+        photo_url: normalizeRemoteImageUrl(d.photo_url || d.thumbnail_url), // Utiliser photo ou thumbnail
+        user_name: displayNameMap.get(d.user_email) || resolveDisplayName({ email: d.user_email, fallback: 'Agent W1LD' }),
         user_email: d.user_email,
         created_at: d.created_at,
       }));
 
-      setReferenceSpecies(refData || []);
+      setReferenceSpecies(normalizedReferenceSpecies);
       setUserDiscoveries(formattedDiscoveries);
 
       // Calculer stats
       const uniqueUsers = new Set(formattedDiscoveries.map(d => d.user_email)).size;
       const stats = {
-        ref: refData?.length || 0,
+        ref: normalizedReferenceSpecies.length,
         users: formattedDiscoveries.length,
         uniqueUsers,
       };
@@ -146,6 +377,44 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
 
       console.log('[ZoneExplorer] Stats calculated:', stats);
       console.log('[ZoneExplorer] Formatted discoveries sample:', formattedDiscoveries.slice(0, 2));
+
+      const missingPhotos = [...normalizedReferenceSpecies]
+        .map((species) => ({
+          ...species,
+          distance: calculateDistance(centerLat, centerLng, species.latitude, species.longitude),
+        }))
+        .filter((species) => !species.photo_url && (species.scientific_name || species.common_name))
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 60);
+
+      if (missingPhotos.length > 0) {
+        void (async () => {
+          for (const species of missingPhotos) {
+            try {
+              const dynamicSpecies = await resolveDynamicSpeciesPhoto(species);
+              if (!dynamicSpecies?.photo_url) continue;
+              writePhotoCache(species, dynamicSpecies.photo_url);
+              setReferenceSpecies((prev) =>
+                prev.map((entry) => (
+                  entry.id === species.id
+                    ? {
+                        ...entry,
+                        ...dynamicSpecies,
+                        photo_url: dynamicSpecies.photo_url,
+                        common_name: dynamicSpecies.common_name || entry.common_name,
+                        scientific_name: dynamicSpecies.scientific_name || entry.scientific_name,
+                        category: dynamicSpecies.category || entry.category,
+                        is_suspicious: false,
+                      }
+                    : entry
+                )),
+              );
+            } catch (photoError) {
+              console.warn('[ZoneExplorer] Dynamic photo fallback failed:', species.scientific_name || species.common_name, photoError?.message || photoError);
+            }
+          }
+        })();
+      }
     } catch (err) {
       console.error('[ZoneExplorer] Erreur chargement:', err);
     } finally {
@@ -155,6 +424,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
 
   const handleSpeciesClick = (species) => {
     feedback('tap', { haptic: true, sound: false });
+    setShowListPanel(null);
     setSelectedSpecies(species);
   };
 
@@ -199,12 +469,19 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
 
   // Calculer la distance entre deux coordonnées (formule Haversine)
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const nextLat1 = Number(lat1);
+    const nextLon1 = Number(lon1);
+    const nextLat2 = Number(lat2);
+    const nextLon2 = Number(lon2);
+    if (![nextLat1, nextLon1, nextLat2, nextLon2].every(Number.isFinite)) {
+      return Number.POSITIVE_INFINITY;
+    }
     const R = 6371; // Rayon de la Terre en km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const dLat = (nextLat2 - nextLat1) * Math.PI / 180;
+    const dLon = (nextLon2 - nextLon1) * Math.PI / 180;
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.cos(nextLat1 * Math.PI / 180) * Math.cos(nextLat2 * Math.PI / 180) *
       Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c * 1000; // Retourner en mètres
@@ -239,6 +516,13 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
       }
     : stats;
 
+  const selectedSpeciesPhoto = resolveSpeciesPhotoUrl(selectedSpecies);
+  const selectedSpeciesCommonName = selectedSpecies
+    ? (selectedSpecies.common_name || getReferenceFallbackLabel(selectedSpecies))
+    : null;
+
+  if (!zoneId) return null;
+
   return createPortal(
     <div
       data-zone-explorer
@@ -247,7 +531,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
         background: 'linear-gradient(180deg, #000000 0%, #0A0A0A 100%)',
       }}
     >
-      {/* Header futuriste */}
+      {/* Header */}
       <div
         className="flex-shrink-0 px-5 py-4"
         style={{
@@ -262,13 +546,13 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
               className="text-[8px] font-black uppercase tracking-[0.5em] mb-1"
               style={{ color: 'rgba(45,122,31,0.5)' }}
             >
-              Exploration Zone
+              Documentation locale
             </p>
             <h1
               className="text-xl font-black uppercase tracking-wider"
               style={{ color: 'var(--v1v-green)' }}
             >
-              {zone.zone_id}
+              {zoneName || zoneId}
             </h1>
           </div>
           <button
@@ -520,7 +804,10 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
               {showListPanel === 'reference' ? (
                 sortedReferenceSpecies.length > 0 ? (
                   <div className="space-y-2">
-                    {sortedReferenceSpecies.map((species, idx) => (
+                    {sortedReferenceSpecies.map((species) => (
+                      (() => {
+                        const speciesLabel = species.common_name || getReferenceFallbackLabel(species);
+                        return (
                       <button
                         key={species.id}
                         onClick={() => {
@@ -542,16 +829,17 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                             <div
                               className="flex-shrink-0"
                               style={{
-                                width: 56,
-                                height: 56,
+                                width: 72,
+                                height: 72,
                                 borderRadius: '8px',
                                 overflow: 'hidden',
                                 background: 'rgba(45,122,31,0.1)',
+                                border: '1px solid rgba(45,122,31,0.18)',
                               }}
                             >
                               <img
                                 src={species.photo_url}
-                                alt={species.common_name}
+                                alt={speciesLabel}
                                 style={{
                                   width: '100%',
                                   height: '100%',
@@ -567,11 +855,12 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                             <div
                               className="flex-shrink-0 flex items-center justify-center"
                               style={{
-                                width: 56,
-                                height: 56,
+                                width: 72,
+                                height: 72,
                                 borderRadius: '8px',
                                 background: 'rgba(45,122,31,0.15)',
                                 fontSize: '24px',
+                                border: '1px solid rgba(45,122,31,0.18)',
                               }}
                             >
                               🌿
@@ -581,7 +870,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                           {/* Info section */}
                           <div className="flex-1 min-w-0 py-2">
                             <p className="text-[11px] font-black truncate" style={{ color: 'var(--v1v-green)' }}>
-                              {species.common_name}
+                              {speciesLabel}
                             </p>
                             {species.scientific_name && (
                               <p className="text-[9px] italic mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>
@@ -601,6 +890,8 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                           </div>
                         </div>
                       </button>
+                        );
+                      })()
                     ))}
                   </div>
                 ) : (
@@ -611,7 +902,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
               ) : (
                 sortedUserDiscoveries.length > 0 ? (
                   <div className="space-y-2">
-                    {sortedUserDiscoveries.map((discovery, idx) => (
+                    {sortedUserDiscoveries.map((discovery) => (
                       <button
                         key={discovery.id}
                         onClick={() => {
@@ -722,7 +1013,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
               className="text-[8px] font-black uppercase tracking-[0.4em] mb-2"
               style={{ color: 'rgba(45,122,31,0.6)' }}
             >
-              Légende
+              Repères
             </p>
             <div className="flex gap-4 text-[10px]">
               <div className="flex items-center gap-1.5">
@@ -734,7 +1025,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                     background: 'var(--v1v-green)',
                   }}
                 />
-                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Base données</span>
+                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Références</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div
@@ -746,7 +1037,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
                     border: '2px solid rgba(255,255,255,0.8)',
                   }}
                 />
-                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Utilisateurs</span>
+                <span style={{ color: 'rgba(255,255,255,0.7)' }}>Observations</span>
               </div>
             </div>
           </div>
@@ -755,87 +1046,179 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
 
       {/* Species detail panel */}
       {selectedSpecies && (
-        <div
-          className="absolute bottom-0 left-0 right-0"
-          style={{
-            background: 'rgba(0,0,0,0.95)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(45,122,31,0.3)',
-            borderRadius: '20px 20px 0 0',
-            padding: '20px',
-            maxHeight: '40vh',
-            overflowY: 'auto',
-          }}
-        >
-          <button
-            onClick={() => setSelectedSpecies(null)}
-            className="absolute top-3 right-3 min-w-[36px] min-h-[36px] flex items-center justify-center"
-            style={{
-              background: 'rgba(255,255,255,0.05)',
-              borderRadius: '50%',
-            }}
-          >
-            <X className="w-4 h-4" style={{ color: 'var(--v1v-fg-muted)' }} />
-          </button>
-
-          <h3
-            className="text-lg font-black uppercase tracking-wide mb-1"
-            style={{ color: 'var(--v1v-green)' }}
-          >
-            {selectedSpecies.common_name}
-          </h3>
-          {selectedSpecies.scientific_name && (
-            <p className="text-xs italic mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>
-              {selectedSpecies.scientific_name}
-            </p>
-          )}
-
-          {/* Distance */}
+        <BlockErrorBoundary label="Fiche espèce indisponible">
           <div
-            className="flex items-center gap-2 py-2 px-3 mb-3"
+            className="absolute inset-0 z-30 flex items-end"
             style={{
-              background: 'rgba(45,122,31,0.1)',
-              border: '1px solid rgba(45,122,31,0.3)',
-              borderRadius: '8px',
+              background: 'rgba(0,0,0,0.38)',
+              backdropFilter: 'blur(8px)',
             }}
+            onClick={() => setSelectedSpecies(null)}
           >
-            <MapPin className="w-4 h-4" style={{ color: 'var(--v1v-green)' }} />
-            <div>
-              <p className="text-[10px] font-black" style={{ color: 'var(--v1v-green)' }}>
-                {(() => {
-                  const dist = calculateDistance(centerLat, centerLng, selectedSpecies.latitude, selectedSpecies.longitude);
-                  return dist < 1000 ? `${Math.round(dist)}m` : `${(dist / 1000).toFixed(1)}km`;
-                })()}
-              </p>
-              <p className="text-[8px]" style={{ color: 'rgba(45,122,31,0.6)' }}>
-                depuis le centre de la zone
-              </p>
-            </div>
-          </div>
-
-          {selectedSpecies.user_name && (
             <div
-              className="flex items-center gap-2 py-2 px-3 mb-3"
+              className="w-full mx-3 mb-3 overflow-hidden"
               style={{
-                background: 'rgba(59,125,232,0.1)',
-                border: '1px solid rgba(59,125,232,0.3)',
-                borderRadius: '8px',
+                background: 'rgba(0,0,0,0.96)',
+                backdropFilter: 'blur(24px)',
+                border: `1px solid ${selectedSpecies.user_name ? 'rgba(59,125,232,0.28)' : 'rgba(45,122,31,0.28)'}`,
+                borderRadius: '22px',
+                boxShadow: selectedSpecies.user_name ? '0 18px 50px rgba(59,125,232,0.12)' : '0 18px 50px rgba(45,122,31,0.12)',
+                maxHeight: '72vh',
+                overflowY: 'auto',
               }}
+              onClick={(event) => event.stopPropagation()}
             >
-              <Users className="w-3 h-3" style={{ color: '#3B7DE8' }} />
-              <span className="text-[10px] font-bold" style={{ color: '#3B7DE8' }}>
-                Découvert par {selectedSpecies.user_name}
-              </span>
+            <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4" style={{ background: 'rgba(0,0,0,0.92)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-[0.32em]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  {selectedSpecies.user_name ? 'Observation terrain' : 'Référence locale'}
+                </p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] mt-1" style={{ color: selectedSpecies.user_name ? '#3B7DE8' : 'var(--v1v-green)' }}>
+                  {selectedSpecies.user_name ? selectedSpecies.user_name : zoneName || zoneId}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedSpecies(null)}
+                className="min-w-[40px] min-h-[40px] flex items-center justify-center"
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '50%',
+                }}
+              >
+                <X className="w-4 h-4" style={{ color: 'var(--v1v-fg-muted)' }} />
+              </button>
             </div>
-          )}
 
-          <div className="flex items-center gap-2 text-[10px]">
-            <MapPin className="w-3 h-3" style={{ color: 'rgba(45,122,31,0.6)' }} />
-            <span style={{ color: 'rgba(255,255,255,0.5)' }}>
-              {selectedSpecies.latitude.toFixed(5)}, {selectedSpecies.longitude.toFixed(5)}
-            </span>
+            <div className="px-5 py-5">
+              <h3
+                className="font-black uppercase tracking-[0.06em]"
+                style={{
+                  color: selectedSpecies.user_name ? '#3B7DE8' : 'var(--v1v-green)',
+                  fontSize: 24,
+                  lineHeight: 1.05,
+                }}
+              >
+                {selectedSpeciesCommonName}
+              </h3>
+              {selectedSpecies.scientific_name && (
+                <p className="text-sm italic mt-2 mb-4" style={{ color: 'rgba(255,255,255,0.52)' }}>
+                  {selectedSpecies.scientific_name}
+                </p>
+              )}
+              {selectedSpeciesPhoto ? (
+                <div
+                  className="mb-4 overflow-hidden"
+                  style={{
+                    borderRadius: '16px',
+                    border: `1px solid ${selectedSpecies.user_name ? 'rgba(59,125,232,0.24)' : 'rgba(45,122,31,0.24)'}`,
+                    background: 'rgba(255,255,255,0.03)',
+                  }}
+                >
+                  <img
+                    src={selectedSpeciesPhoto}
+                    alt={selectedSpeciesCommonName}
+                    style={{
+                      width: '100%',
+                      height: 220,
+                      objectFit: 'cover',
+                      display: 'block',
+                    }}
+                  />
+                </div>
+              ) : (
+                <div
+                  className="mb-4 flex items-center justify-center"
+                  style={{
+                    height: 180,
+                    borderRadius: '16px',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'rgba(255,255,255,0.03)',
+                    color: 'rgba(255,255,255,0.34)',
+                    fontSize: 14,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.28em',
+                    fontWeight: 900,
+                  }}
+                >
+                  Recherche d'image...
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <span
+                  className="px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.18em]"
+                  style={{
+                    background: selectedSpecies.user_name ? 'rgba(59,125,232,0.14)' : 'rgba(45,122,31,0.14)',
+                    border: `1px solid ${selectedSpecies.user_name ? 'rgba(59,125,232,0.25)' : 'rgba(45,122,31,0.25)'}`,
+                    color: selectedSpecies.user_name ? '#3B7DE8' : 'var(--v1v-green)',
+                  }}
+                >
+                  {selectedSpecies.user_name ? 'Observation terrain' : 'Référence locale'}
+                </span>
+                {!selectedSpecies.user_name && selectedSpeciesPhoto && (
+                  <span
+                    className="px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.18em]"
+                    style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      color: 'rgba(255,255,255,0.55)',
+                    }}
+                  >
+                    Photo synchronisée
+                  </span>
+                )}
+              </div>
+
+              <div
+                className="flex items-center gap-2 py-2 px-3 mb-3"
+                style={{
+                  background: 'rgba(45,122,31,0.1)',
+                  border: '1px solid rgba(45,122,31,0.3)',
+                  borderRadius: '10px',
+                }}
+              >
+                <MapPin className="w-4 h-4" style={{ color: 'var(--v1v-green)' }} />
+                <div>
+                  <p className="text-[10px] font-black" style={{ color: 'var(--v1v-green)' }}>
+                    {(() => {
+                      const dist = calculateDistance(centerLat, centerLng, selectedSpecies.latitude, selectedSpecies.longitude);
+                      if (!Number.isFinite(dist)) return 'position inconnue';
+                      return dist < 1000 ? `${Math.round(dist)}m` : `${(dist / 1000).toFixed(1)}km`;
+                    })()}
+                  </p>
+                  <p className="text-[8px]" style={{ color: 'rgba(45,122,31,0.6)' }}>
+                    depuis le coeur de la zone
+                  </p>
+                </div>
+              </div>
+
+              {selectedSpecies.user_name && (
+                <div
+                  className="flex items-center gap-2 py-2 px-3 mb-3"
+                  style={{
+                    background: 'rgba(59,125,232,0.1)',
+                    border: '1px solid rgba(59,125,232,0.3)',
+                    borderRadius: '10px',
+                  }}
+                >
+                  <Users className="w-3 h-3" style={{ color: '#3B7DE8' }} />
+                  <span className="text-[10px] font-bold" style={{ color: '#3B7DE8' }}>
+                    Découvert par {selectedSpecies.user_name}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 text-[10px]">
+                <MapPin className="w-3 h-3" style={{ color: 'rgba(45,122,31,0.6)' }} />
+                <span style={{ color: 'rgba(255,255,255,0.5)' }}>
+                  {selectedSpecies.latitude.toFixed(5)}, {selectedSpecies.longitude.toFixed(5)}
+                </span>
+              </div>
+            </div>
+            </div>
           </div>
-        </div>
+        </BlockErrorBoundary>
       )}
     </div>,
     document.body

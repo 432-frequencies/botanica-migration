@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/api/supabaseClient";
 import { Crown, MapPin, Zap, Target } from "lucide-react";
 import { Link } from "react-router-dom";

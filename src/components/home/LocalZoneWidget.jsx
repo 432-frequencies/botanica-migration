@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/api/supabaseClient";
-import { Crown, Flame, MapPin, Share2, Shield, Sparkles, Target, Trophy, Zap } from "lucide-react";
+import { Compass, Flame, MapPin, Share2, Sparkles, Target, Trophy, Zap } from "lucide-react";
 import { getLevelProgress } from "@/lib/leveling";
 import { useZoneLabel } from "@/lib/locationMeta";
 import { getSpeciesKey, normalizeSpeciesCategory } from "@/lib/species";
@@ -93,13 +93,13 @@ function buildChallenges({
     const leadMargin = Math.max(0, localSpeciesCount - (leader?.species_count || 0));
     challenges.push({
       key: "defense",
-      icon: <Shield className="w-3.5 h-3.5" style={{ color: GOLD }} />,
-      title: "Renforcer la zone",
+      icon: <Compass className="w-3.5 h-3.5" style={{ color: GOLD }} />,
+      title: "Ancrer le repere",
       description: leadMargin > 0
         ? `Tu documentes ${leadMargin} ${pluralize(leadMargin, "espece")} d'avance dans cette zone`
-        : "Une observation de plus consoliderait immediatement ta contribution locale",
+        : "Une observation de plus stabiliserait immediatement ton role de referent local",
       progress: Math.min(100, Math.max(leadMargin, 1) * 20),
-      progressText: leadMargin > 0 ? `+${leadMargin} d'avance` : "Zone a consolider",
+      progressText: leadMargin > 0 ? `+${leadMargin} d'avance` : "Repere a renforcer",
     });
   } else {
     const target = Math.max(1, (leader?.species_count || 0) + 1);
@@ -108,13 +108,13 @@ function buildChallenges({
     challenges.push({
       key: "zone",
       icon: <Target className="w-3.5 h-3.5" style={{ color: G }} />,
-      title: leader ? "Devenir referent" : "Premiere contribution",
+      title: leader ? "Devenir referent" : "Devenir gardien",
       description: canTakeCrown
         ? leader
-          ? "Tu as deja le score pour devenir la reference locale. Ouvre la carte et valide la zone."
-          : "La zone est prete a accueillir sa premiere contribution. Ouvre la carte et initie sa documentation."
+          ? "Tu as deja le score pour devenir le referent local. Ouvre la carte et enregistre cette avancee."
+          : "La zone est prete a accueillir sa premiere observation structurante. Ouvre la carte et initie sa documentation."
         : leader
-        ? `Encore ${gap} ${pluralize(gap, "espece")} unique pour depasser ${leader.display_name || "la reference actuelle"}`
+        ? `Encore ${gap} ${pluralize(gap, "espece")} unique pour depasser ${leader.display_name || "le referent actuel"}`
         : "La zone est ouverte. Une espece unique ici suffit pour lancer la documentation.",
       progress: canTakeCrown ? 100 : Math.min(100, (localSpeciesCount / target) * 100),
       progressText: leader ? `${localSpeciesCount}/${target} especes` : `${Math.min(localSpeciesCount, 1)}/1 zone`,
@@ -124,8 +124,8 @@ function buildChallenges({
   const legendProgress = Math.min(100, (effectiveOwnedZonesCount / LEGEND_ZONE_GOAL) * 100);
   challenges.push({
     key: "legend",
-    icon: <Crown className="w-3.5 h-3.5" style={{ color: effectiveOwnedZonesCount > 0 ? GOLD : G }} />,
-    title: effectiveOwnedZonesCount > 0 ? "Vers Legende" : "Devenir gardien",
+    icon: <Compass className="w-3.5 h-3.5" style={{ color: effectiveOwnedZonesCount > 0 ? GOLD : G }} />,
+    title: effectiveOwnedZonesCount > 0 ? "Chemin vers Legende" : "Devenir gardien",
     description: effectiveOwnedZonesCount > 0
       ? `${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentees - encore ${Math.max(0, LEGEND_ZONE_GOAL - effectiveOwnedZonesCount)} avant Legende`
       : "0/1 zone documentee - initie ta premiere zone pour lancer ton parcours",
@@ -342,12 +342,12 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
       ? activeZoneId
       : primeTarget?.zoneId || activeZoneId;
   const primaryActionLabel = isLeader
-    ? "Renforcer la zone"
+    ? "Explorer la carte"
     : canTakeCrown
-      ? "Documenter la zone"
+      ? "Documenter ici"
       : noLeader
-        ? "Initier la zone"
-        : "Voir la carte";
+        ? "Initier cette zone"
+        : "Explorer la carte";
 
   useEffect(() => {
     if (challengeCount <= 1) return;
@@ -368,72 +368,72 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
   if (!geoCoords || !userEmail || loading) return null;
 
   const headline = isLeader
-    ? "Vous etes la reference de cette zone"
+    ? "Tu es le referent de cette zone"
     : canTakeCrown
-      ? "Votre contribution peut faire reference ici"
+      ? "Ton observation peut devenir un repere ici"
     : noLeader
-      ? "Cette zone attend sa premiere reference"
-      : `Encore ${zoneGap} ${pluralize(zoneGap, "espece")} pour devenir la reference locale`;
+      ? "Cette zone attend son premier repere"
+      : `Encore ${zoneGap} ${pluralize(zoneGap, "espece")} pour devenir le referent local`;
 
   const supportingCopy = isLeader
     ? effectiveOwnedZonesCount >= LEGEND_ZONE_GOAL
       ? "Votre parcours local est deja bien etabli. Continuez a enrichir le vivant zone apres zone."
       : `${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentees - plus que ${LEGEND_ZONE_GOAL - effectiveOwnedZonesCount} avant le rang Legende`
     : effectiveOwnedZonesCount > 0
-      ? `${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentees - une nouvelle zone te rapproche de Legende`
+      ? `${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentees - une nouvelle zone te rapproche du rang Legende`
       : canTakeCrown
-        ? "0/1 zone documentee - ouvre la carte et officialise ta premiere contribution majeure"
+        ? "0/1 zone documentee - ouvre la carte et enregistre ton premier repere local"
       : noLeader
         ? "0/1 zone documentee - une seule espece unique ici suffit pour lancer cette zone"
-        : `0/1 zone documentee - depasse ${leader?.display_name || "la reference actuelle"} et signe ta premiere zone`;
+        : `0/1 zone documentee - depasse ${leader?.display_name || "le referent actuel"} et signe ta premiere zone`;
 
   const contributionStatus = isLeader
     ? effectiveOwnedZonesCount >= LEGEND_ZONE_GOAL
       ? "Legende active"
-      : "Reference etablie"
+      : "Referent etabli"
     : canTakeCrown
-      ? "Pret a valider"
-      : noLeader
-        ? "Premiere trace"
+      ? "Pret a documenter"
+    : noLeader
+      ? "Premiere trace"
         : "Elan local";
 
   const missionBrief = isLeader
     ? effectiveOwnedZonesCount >= LEGEND_ZONE_GOAL
-      ? "Continue a documenter tes zones et montre que ton parcours local est durable."
+      ? "Continue a documenter tes zones et montre que ton parcours local reste utile et durable."
       : "Trouve une nouvelle espece ici pour rendre cette zone encore plus riche et fiable."
     : canTakeCrown
-      ? "Tu as deja le score. Ouvre la carte, valide cette zone et partage ta contribution."
-      : noLeader
+      ? "Tu as deja le score. Ouvre la carte, enregistre cette observation cle et partage ton repere."
+    : noLeader
         ? "Une espece unique ici suffit pour lancer la documentation de cette zone."
-        : `Trouve encore ${zoneGap} ${pluralize(zoneGap, "espece")} unique pour devenir la reference devant ${leader?.display_name || "la reference actuelle"}.`;
+        : `Trouve encore ${zoneGap} ${pluralize(zoneGap, "espece")} unique pour devenir le referent devant ${leader?.display_name || "le referent actuel"}.`;
 
   const broadcastLabel = isLeader
-    ? "Partager la reference"
+    ? "Partager le repere"
     : canTakeCrown
-      ? "Partager la progression"
+      ? "Partager l'observation"
     : noLeader
-        ? "Partager l'ouverture"
+        ? "Partager l'initiation"
         : "Partager l'observation";
 
   const sharePayload = {
     kind: isLeader ? "reference" : canTakeCrown ? "milestone" : noLeader ? "opening" : "progress",
     zoneId: activeZoneId,
     zoneLabel: displayedActiveZone,
-    headline: isLeader ? "Reference locale" : canTakeCrown ? "Contribution decisive" : noLeader ? "Zone a initier" : "Progression locale",
+    headline: isLeader ? "Referent local" : canTakeCrown ? "Observation cle" : noLeader ? "Zone a initier" : "Progression locale",
     detail: isLeader
       ? `Je documente ${displayedActiveZone} sur W1LD et j'enrichis cette zone espece apres espece.`
       : canTakeCrown
-        ? `${displayedActiveZone} est prete a accueillir une contribution majeure.`
+        ? `${displayedActiveZone} est prete a accueillir une observation cle.`
         : noLeader
           ? `${displayedActiveZone} n'a pas encore de reference locale. C'est le moment de lancer sa documentation.`
-          : `Je progresse dans ${displayedActiveZone}. Encore ${zoneGap} ${pluralize(zoneGap, "espece")} pour devenir la reference locale.`,
+          : `Je progresse dans ${displayedActiveZone}. Encore ${zoneGap} ${pluralize(zoneGap, "espece")} pour devenir le referent local.`,
     metricValue: isLeader ? `${effectiveOwnedZonesCount}` : canTakeCrown ? "1" : noLeader ? "0-1" : `${zoneGap}`,
     metricLabel: isLeader ? "Zones documentees" : canTakeCrown ? "Validation proche" : noLeader ? "Zone a lancer" : "Especes restantes",
     mission: missionBrief,
     broadcast: isLeader
       ? `${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentees avant le rang Legende.`
       : canTakeCrown
-        ? "Cette zone peut basculer vers une contribution majeure des maintenant."
+        ? "Cette zone peut accueillir une observation cle des maintenant."
         : noLeader
           ? "Une decouverte ici suffit pour lancer une nouvelle zone documentee."
           : `${localSpeciesCount}/${zoneTarget} especes locales. La progression se construit dans cette zone.`,
@@ -445,18 +445,18 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
     footerDetail: isLeader
       ? `${Math.max(0, LEGEND_ZONE_GOAL - effectiveOwnedZonesCount)} zones encore avant Legende`
       : canTakeCrown
-        ? "Contribution majeure disponible des maintenant"
+        ? "Observation cle disponible des maintenant"
         : noLeader
           ? "Premiere zone a initier"
           : `${zoneGap} ${pluralize(zoneGap, "espece")} pour devenir referent`,
-    shareTitle: isLeader ? "Reference locale" : canTakeCrown ? "Contribution decisive" : noLeader ? "Zone a initier" : "Observation en cours",
+    shareTitle: isLeader ? "Referent local" : canTakeCrown ? "Observation cle" : noLeader ? "Zone a initier" : "Observation en cours",
     shareText: isLeader
-      ? `Je suis la reference locale de ${displayedActiveZone} sur W1LD. ${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentees avant le rang Legende.`
+      ? `Je suis le referent local de ${displayedActiveZone} sur W1LD. ${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentees avant le rang Legende.`
       : canTakeCrown
-        ? `Je peux signer une contribution majeure dans ${displayedActiveZone} sur W1LD.`
+        ? `Je peux enregistrer une observation cle dans ${displayedActiveZone} sur W1LD.`
         : noLeader
           ? `${displayedActiveZone} attend sa premiere reference sur W1LD.`
-          : `Je documente ${displayedActiveZone} sur W1LD. Encore ${zoneGap} ${pluralize(zoneGap, "espece")} pour devenir la reference locale.`,
+          : `Je documente ${displayedActiveZone} sur W1LD. Encore ${zoneGap} ${pluralize(zoneGap, "espece")} pour devenir le referent local.`,
   };
 
   const primaryTrack = !isLeader && effectiveOwnedZonesCount === 0
@@ -510,15 +510,15 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
             : "rgba(200,150,10,0.28)",
         badge: primeTarget.ready ? "Prete" : primeTarget.free ? "A initier" : `-${primeTarget.gap} especes`,
         title: primeTarget.ready
-          ? `Contribution decisive sur ${displayedPrimeTarget}`
+          ? `Observation cle sur ${displayedPrimeTarget}`
           : primeTarget.free
             ? `Zone a documenter : ${displayedPrimeTarget}`
             : `Prochaine zone a enrichir : ${displayedPrimeTarget}`,
         description: primeTarget.ready
-          ? "Tu as deja ce qu'il faut. Passe sur la carte et valide cette zone."
+          ? "Tu as deja ce qu'il faut. Passe sur la carte et enregistre cette observation cle."
           : primeTarget.free
             ? "Aucune reference locale en place. Un scan bien situe peut lancer la documentation autour de toi."
-            : `Plus que ${primeTarget.gap} ${pluralize(primeTarget.gap, "espece")} unique et ${primeTarget.leaderName} n'est plus la reference locale.`,
+            : `Plus que ${primeTarget.gap} ${pluralize(primeTarget.gap, "espece")} unique et ${primeTarget.leaderName} n'est plus le referent local.`,
         leftLabel: "Vous",
         leftValue: primeTarget.userScore,
         middleLabel: primeTarget.free ? "Seuil" : "Leader",
@@ -581,7 +581,7 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
             border: `1px solid ${isLeader ? "rgba(200,150,10,0.35)" : "rgba(45,122,31,0.25)"}`,
           }}
         >
-          {isLeader ? "Reference" : noLeader ? "A initier" : "En cours"}
+          {isLeader ? "Referent" : noLeader ? "A initier" : "En cours"}
         </span>
       </div>
 
@@ -635,7 +635,7 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
       >
         <div className="flex items-center justify-between gap-3 mb-2">
           <p className="text-[8px] font-black uppercase tracking-[0.3em]" style={{ color: "rgba(45,122,31,0.5)" }}>
-            Repere du jour
+            Mission du jour
           </p>
           <span
             className="text-[7px] font-black uppercase tracking-[0.28em] px-2 py-1"
@@ -676,7 +676,7 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
         >
           <div className="flex items-center justify-between gap-3 mb-2">
             <p className="text-[8px] font-black uppercase tracking-[0.3em]" style={{ color: "rgba(45,122,31,0.5)" }}>
-              Opportunite proche
+            Opportunite proche
             </p>
             <span
               className="text-[7px] font-black uppercase tracking-[0.28em] px-2 py-1"
@@ -713,7 +713,7 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
           boxShadow: isLeader ? "0 0 20px rgba(200,150,10,0.12)" : "0 0 18px rgba(45,122,31,0.08)",
         }}
       >
-        {isLeader ? <Crown className="w-3.5 h-3.5" /> : <Target className="w-3.5 h-3.5" />}
+        {isLeader ? <Compass className="w-3.5 h-3.5" /> : <Target className="w-3.5 h-3.5" />}
         {primaryActionLabel}
       </button>
 
@@ -728,7 +728,7 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
           }}
         >
           <Share2 className="w-3.5 h-3.5" />
-          Partager ce repere
+          Partager cette note
         </button>
       )}
 

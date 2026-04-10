@@ -1,27 +1,29 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crown, Sparkles, Trophy } from 'lucide-react';
+import { Compass, Sparkles, Trophy } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { useZoneLabel } from '@/lib/locationMeta';
 
 /**
- * Animation de célébration Tesla-style quand on devient champion d'une zone
+ * Animation de célébration quand on devient la référence locale d'une zone
  */
 export default function ChampionCelebration({ zone, onClose }) {
   const [show, setShow] = useState(true);
+  const { label: zoneName } = useZoneLabel(zone?.zone_id);
 
   useEffect(() => {
     if (!zone) return;
 
-    // Confettis dorés immédiats
-    const duration = 2500;
+    // Confettis sobres inspirés du vivant
+    const duration = 2200;
     const animationEnd = Date.now() + duration;
     const defaults = {
       startVelocity: 30,
       spread: 360,
       ticks: 60,
       zIndex: 10000,
-      colors: ['#FFD700', '#FFC800', '#FFE55C', '#C49A0A']
+      colors: ['#2EA80F', '#7ED957', '#FFE55C', '#C49A0A']
     };
 
     function randomInRange(min, max) {
@@ -167,7 +169,7 @@ export default function ChampionCelebration({ zone, onClose }) {
                   boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
                 }}
               >
-                <Crown className="w-16 h-16" style={{ color: '#1A1A1A' }} />
+                <Compass className="w-16 h-16" style={{ color: '#1A1A1A' }} />
               </motion.div>
             </motion.div>
 
@@ -179,7 +181,7 @@ export default function ChampionCelebration({ zone, onClose }) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
-              Champion !
+              Référence locale
             </motion.h2>
 
             {/* Subtitle */}
@@ -190,7 +192,7 @@ export default function ChampionCelebration({ zone, onClose }) {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
             >
-              Vous dominez la zone {zone.zone_id}
+              Tu apportes maintenant la documentation la plus complete dans {zoneName || zone.zone_id}
             </motion.p>
 
             {/* Trophy icon */}

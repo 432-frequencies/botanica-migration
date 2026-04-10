@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/api/supabaseClient";
-import { Compass, MapPin, Star, ChevronRight, Lock } from "lucide-react";
+import { MapPin, Star, ChevronRight } from "lucide-react";
 import ConstellationModal from "@/components/astronomy/ConstellationModal";
 
 const G = "var(--v1v-green)";

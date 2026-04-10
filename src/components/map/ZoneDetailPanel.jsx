@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { X, Crown, MapPin, Compass, Trophy } from "lucide-react";
+import { X, MapPin, Compass, Trophy } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { modalSlideUp } from "@/motion/variants";
@@ -7,6 +7,7 @@ import { supabase } from "@/api/supabaseClient";
 import { resolveDisplayName } from "@/lib/displayName";
 import { useZoneLabel } from "@/lib/locationMeta";
 import ZoneExplorer from "./ZoneExplorer";
+import BlockErrorBoundary from "@/components/shared/BlockErrorBoundary";
 
 const ZONE_DEG = 0.0045;
 
@@ -28,23 +29,23 @@ export default function ZoneDetailPanel({ zone, onClose, userEmail, onConquest }
   const conquestGap = noLeader ? 1 : Math.max(1, leaderScore + 1 - userScore);
   const championTone = isOwned
     ? leadMargin <= 1
-      ? "Zone a consolider"
+      ? "Gardien actif"
       : leadMargin <= 3
-      ? "Reference observee"
-      : "Zone bien documentee"
+      ? "Referent local"
+      : "Referent etabli"
     : null;
   const championCopy = isOwned
     ? leadMargin <= 1
-      ? "Une observation supplementaire consoliderait immediatement ta place de reference ici."
+      ? "Une observation supplementaire renforcerait tout de suite ton role de referent ici."
       : leadMargin <= 3
-      ? `Tu documentes ${leadMargin} espece${leadMargin > 1 ? "s" : ""} d'avance. Encore quelques observations et la zone gagnera en profondeur.`
-      : `Tu apportes actuellement la contribution la plus riche ici avec ${leadMargin} especes d'avance. Continue a enrichir cette zone.`
+      ? `Tu documentes ${leadMargin} espece${leadMargin > 1 ? "s" : ""} d'avance. Encore quelques observations et cette zone gagnera en fiabilite.`
+      : `Tu apportes actuellement la documentation la plus complete ici avec ${leadMargin} especes d'avance. Continue a enrichir cette zone.`
     : noLeader
-    ? "Zone en attente de premiere contribution marquante. La prochaine observation peut lancer sa documentation."
+    ? "Cette zone attend encore sa premiere observation structurante. La prochaine espece peut lancer sa documentation locale."
     : conquestGap === 1
-    ? "Tu es a une espece de devenir la reference locale."
-    : `${conquestGap} nouvelles especes ici et la reference locale evolue.`;
-  const rivalName = nearestRival?.display_name || "les challengers";
+    ? "Tu es a une espece d'y devenir referent."
+    : `${conquestGap} nouvelles especes ici et le referent local peut evoluer.`;
+  const rivalName = nearestRival?.display_name || "les autres observateurs";
 
   // Charger le classement de la zone
   useEffect(() => {
@@ -216,9 +217,9 @@ export default function ZoneDetailPanel({ zone, onClose, userEmail, onConquest }
                 }}
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <Crown className="w-3 h-3" style={{ color: isOwned ? "var(--v1v-amber)" : "var(--v1v-blue)" }} />
+                  <Compass className="w-3 h-3" style={{ color: isOwned ? "var(--v1v-amber)" : "var(--v1v-blue)" }} />
                   <span className="text-[8px] font-black uppercase tracking-[0.2em]" style={{ color: isOwned ? "rgba(196,154,10,0.6)" : "rgba(59,125,232,0.55)" }}>
-                    {isOwned ? "Reference locale" : noLeader ? "Zone a initier" : "Reference a atteindre"}
+                    {isOwned ? "Referent local" : noLeader ? "Zone a initier" : "Referent a rejoindre"}
                   </span>
                   {isOwned && (
                     <span
@@ -236,7 +237,7 @@ export default function ZoneDetailPanel({ zone, onClose, userEmail, onConquest }
                 {noLeader ? (
                   <>
                     <p className="text-sm font-black uppercase tracking-[0.08em]" style={{ color: "var(--v1v-blue)" }}>
-                      Premiere contribution de cette zone
+                      Premiere observation structurante
                     </p>
                     <p className="text-[11px] mt-2 leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>
                       {championCopy}
@@ -247,7 +248,7 @@ export default function ZoneDetailPanel({ zone, onClose, userEmail, onConquest }
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-black uppercase tracking-[0.06em]" style={{ color: isOwned ? "var(--v1v-amber)" : "var(--v1v-fg)" }}>
-                          {isOwned ? "Vous etes la reference de cette zone" : zone.leader.display_name}
+                          {isOwned ? "Tu es le referent local de cette zone" : zone.leader.display_name}
                         </p>
                         <p className="text-[11px] mt-1 leading-relaxed" style={{ color: isOwned ? "rgba(255,235,150,0.7)" : "var(--v1v-fg-muted)" }}>
                           {championCopy}
@@ -288,7 +289,7 @@ export default function ZoneDetailPanel({ zone, onClose, userEmail, onConquest }
                           Prochaine etape
                         </p>
                         <p className="text-sm font-black mt-1" style={{ color: "var(--v1v-fg)" }}>
-                          {isOwned ? "Renforcer la zone" : "Documenter ici"}
+                          {isOwned ? "Enrichir la zone" : "Observer ici"}
                         </p>
                       </div>
                     </div>
@@ -316,7 +317,7 @@ export default function ZoneDetailPanel({ zone, onClose, userEmail, onConquest }
                         color: userRank === 1 ? "var(--v1v-amber)" : "#3B7DE8",
                         borderRadius: "4px",
                       }}>
-                        {userRank === 1 ? "Reference" : `#${userRank}`}
+                        {userRank === 1 ? "Referent" : `#${userRank}`}
                       </span>
                     )}
                   </div>
@@ -348,7 +349,7 @@ export default function ZoneDetailPanel({ zone, onClose, userEmail, onConquest }
                                 color: isChampion ? "var(--v1v-amber)" : "var(--v1v-fg-muted)",
                               }}
                             >
-                              {isChampion ? "👑" : `#${idx + 1}`}
+                              {isChampion ? "R" : `#${idx + 1}`}
                             </div>
                             <p className="text-[11px] font-black" style={{ color: isCurrentUser ? "var(--v1v-green)" : "var(--v1v-fg)" }}>
                               {isCurrentUser ? "Vous" : player.display_name}
@@ -398,11 +399,13 @@ export default function ZoneDetailPanel({ zone, onClose, userEmail, onConquest }
 
       {/* Zone Explorer Modal - OUTSIDE createPortal to avoid z-index stacking */}
       {showExplorer && (
-        <ZoneExplorer
-          zone={zone}
-          userEmail={userEmail}
-          onClose={() => setShowExplorer(false)}
-        />
+        <BlockErrorBoundary label="Exploration de zone indisponible">
+          <ZoneExplorer
+            zone={zone}
+            userEmail={userEmail}
+            onClose={() => setShowExplorer(false)}
+          />
+        </BlockErrorBoundary>
       )}
     </>
   );

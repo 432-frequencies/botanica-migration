@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense, lazy } from "react";
 import { createPortal } from "react-dom";
 import { getUserProfile } from "@/api/getUserProfile";
 import { saveDiscovery } from "@/api/saveDiscovery";
@@ -6,18 +6,12 @@ import { identifyPlant } from "@/api/identifyPlant";
 import { uploadPhoto } from "@/api/uploadPhoto";
 import { createPageUrl } from "@/utils";
 import { feedback } from "@/utils/feedback";
-import { Camera, User, Zap, Shield, WifiOff, Flame, MapPin } from "lucide-react";
+import { User, Zap, Shield, WifiOff, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 import { fadeInUp } from "@/motion/variants";
 import { useScrollReveal } from "@/motion/hooks/useScrollReveal";
-import CameraCapture from "@/components/identify/CameraCapture";
-import PlantResult from "@/components/identify/PlantResult";
-import AchievementToast from "@/components/identify/AchievementToast";
-import LevelUpCelebration from "@/components/shared/LevelUpCelebration";
-import XPLevelBar, { getCurrentLevel } from "@/components/home/XPLevelBar";
+import { getCurrentLevel } from "@/components/home/XPLevelBar";
 import XPLevelModule from "@/components/home/XPLevelModule";
-import LocalZoneWidget from "@/components/home/LocalZoneWidget";
-import CurrentZoneStatus from "@/components/home/CurrentZoneStatus";
 import PullToRefresh from "@/components/shared/PullToRefresh";
 import BlockErrorBoundary from "@/components/shared/BlockErrorBoundary";
 
@@ -26,6 +20,7 @@ import { Component } from "react";
 import { getPendingQueue, updateQueueItem, removeFromQueue, addToQueue } from "@/utils/offlineQueue";
 import { useIsActivePage } from "@/lib/ActivePageContext";
 import { useAuth } from "@/lib/AuthContext";
+import { hasLaunchAccess } from "@/lib/app-config";
 
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { hasError: false }; }
@@ -37,43 +32,21 @@ class ErrorBoundary extends Component {
 }
 
 const G = "var(--v1v-green)";
-const GD = "var(--v1v-green-ghost)";
-const GDB = "var(--v1v-green-bg)";
-
-const GREETINGS = [
-  { min: 6,  max: 12, text: (name) => `BONNE CHASSE, ${name}.` },
-  { min: 12, max: 18, text: () => "LE TERRAIN T'ATTEND." },
-  { min: 18, max: 23, text: () => "L'HEURE DES NOCTURNES." },
-  { min: 23, max: 30, text: () => "CIEL DÉGAGÉ CE SOIR ?" }, // 23-30 covers 23-6 (24+6)
-];
-
-function getGreeting(name = "RANGER") {
-  const h = new Date().getHours();
-  const normalH = h < 6 ? h + 24 : h;
-  for (const g of GREETINGS) {
-    if (normalH >= g.min && normalH < g.max) return g.text(name.toUpperCase());
-  }
-  return `BONNE CHASSE, ${name.toUpperCase()}.`;
-}
+const CameraCapture = lazy(() => import("@/components/identify/CameraCapture"));
+const PlantResult = lazy(() => import("@/components/identify/PlantResult"));
+const AchievementToast = lazy(() => import("@/components/identify/AchievementToast"));
+const LevelUpCelebration = lazy(() => import("@/components/shared/LevelUpCelebration"));
+const LocalZoneWidget = lazy(() => import("@/components/home/LocalZoneWidget"));
+const CurrentZoneStatus = lazy(() => import("@/components/home/CurrentZoneStatus"));
+const CommunityFeed = lazy(() => import("@/components/home/CommunityFeed"));
+const TerrainAlertDeck = lazy(() => import("@/components/home/TerrainAlertDeck"));
+const SquadPulseCard = lazy(() => import("@/components/home/SquadPulseCard"));
 
 const SCAN_TEXTS = [
   "POINTE VERS LE VIVANT.",
   "IDENTIFIE. COLLECTE. GAGNE.",
   "LA NATURE T'ATTEND.",
 ];
-
-const RANK_COLORS = {
-  Scout:       "#2D7A1F",
-  Tracker:     "#3AAF1A",
-  Observer:    "#3AB8A5",
-  "Field Agent": "#3A7AB8",
-  Specialist:  "#7A3AB8",
-  Expert:      "#B87A3A",
-  Analyst:     "#B83A3A",
-  Elite:       "#B8983A",
-  Phantom:     "#A0A0A0",
-  Ghost:       "#E0E0E0",
-};
 
 function SkeletonBlock({ className, style }) {
   return (
@@ -98,6 +71,41 @@ function ScrollRevealSection({ children, threshold = 0.1 }) {
   );
 }
 
+function SectionFallback({ title = "Chargement du terrain...", compact = false }) {
+  return (
+    <div className="px-5 py-3">
+      <div
+        style={{
+          background: "rgba(45,122,31,0.07)",
+          border: "1px solid rgba(45,122,31,0.16)",
+          borderRadius: compact ? 12 : 16,
+          padding: compact ? "14px" : "18px",
+        }}
+      >
+        <p className="text-[9px] font-black uppercase tracking-[0.32em] mb-3" style={{ color: "rgba(57,184,20,0.45)" }}>
+          {title}
+        </p>
+        <div className="space-y-2">
+          <SkeletonBlock style={{ height: 8, width: "72%" }} />
+          <SkeletonBlock style={{ height: 8, width: "48%" }} />
+          {!compact && <SkeletonBlock style={{ height: 42, width: "100%", marginTop: 12 }} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModalFallback({ label }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.82)" }}>
+      <div className="px-6 py-5 text-center" style={{ background: "var(--v1v-bg-card)", border: "1px solid var(--v1v-green-ghost)" }}>
+        <div className="w-7 h-7 rounded-full border-2 mx-auto mb-3 animate-spin" style={{ borderColor: "var(--v1v-green)", borderTopColor: "transparent" }} />
+        <p className="text-[9px] font-black uppercase tracking-[0.35em]" style={{ color: "var(--v1v-green-faint)" }}>{label}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const isActive = useIsActivePage("Home");
   const { isAuthenticated, isLoadingAuth, navigateToLogin } = useAuth();
@@ -112,22 +120,17 @@ export default function Home() {
   const [toast, setToast] = useState(null);
   const [achievementQueue, setAchievementQueue] = useState([]);
   const [showLimitModal, setShowLimitModal] = useState(false);
-  const [scanPulse, setScanPulse] = useState(false);
   const [scanTextIdx, setScanTextIdx] = useState(0);
   const [geoCoords, setGeoCoords] = useState(null);
   const [geoPermission, setGeoPermission] = useState(() => {
     try { return localStorage.getItem("geo_permission") || "unknown"; } catch { return "unknown"; }
   });
-  const [pendingCount, setPendingCount] = useState(0);
-  const [queueProgress, setQueueProgress] = useState(null); // { current, total }
   const [scanPhase, setScanPhase] = useState(0); // 0=init 1=analyse 2=classification
   const [scanTimeout, setScanTimeout] = useState(false);
-  const [streakWarning, setStreakWarning] = useState(false);
   const [identifyMode, setIdentifyMode] = useState("plant");
   const [showAudio, setShowAudio] = useState(false);
   const [levelUpData, setLevelUpData] = useState(null);
   const geoRef = useRef(null);
-  const userDataSnapshot = useRef(null);
 
   // Ne charger qu'à la première activation de la page
   // isActive est la dépendance — se déclenche à la première activation
@@ -144,7 +147,6 @@ export default function Home() {
       // Nettoyer l'URL sans rechargement
       window.history.replaceState({}, "", window.location.pathname);
     }
-    const iv = setInterval(() => setScanPulse(p => !p), 2000);
     const iv2 = setInterval(() => setScanTextIdx(i => (i + 1) % SCAN_TEXTS.length), 3000);
     // Géolocalisation — si déjà accordée, récupérer silencieusement
     if (localStorage.getItem("geo_permission") === "granted") {
@@ -170,7 +172,6 @@ export default function Home() {
     if (navigator.onLine) processOfflineQueue();
 
     return () => {
-      clearInterval(iv);
       clearInterval(iv2);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
@@ -181,14 +182,12 @@ export default function Home() {
     const queue = (await getPendingQueue()).filter(i => i.status !== 'error' || i.attempts < 3);
     if (!queue.length) return;
 
-    setPendingCount(queue.length);
     setToast(`Connexion rétablie — identification de ${queue.length} photo${queue.length > 1 ? "s" : ""} en attente...`);
 
     let successCount = 0;
 
     for (let idx = 0; idx < queue.length; idx++) {
       const item = queue[idx];
-      setQueueProgress({ current: idx + 1, total: queue.length });
       try {
         await updateQueueItem(item.id, { status: "processing", attempts: (item.attempts || 0) + 1 });
 
@@ -212,14 +211,11 @@ export default function Home() {
 
         await removeFromQueue(item.id);
         successCount++;
-      } catch (e) {
+      } catch {
         const attempts = (item.attempts || 0) + 1;
         await updateQueueItem(item.id, { status: attempts >= 3 ? "error" : "pending", attempts });
       }
     }
-
-    setQueueProgress(null);
-    setPendingCount(0);
 
     if (successCount > 0) {
       setToast(`${successCount} espèce${successCount > 1 ? "s" : ""} ajoutée${successCount > 1 ? "s" : ""} depuis ta session hors ligne.`);
@@ -260,17 +256,6 @@ export default function Home() {
       // Nettoyage du flag local une fois le backend confirmé
       if (profileData?.profile?.onboarding_completed && localOnboardingDone) {
         localStorage.removeItem("onboarding_completed");
-      }
-
-      // Streak warning
-      const lastScan = profileData?.profile?.last_scan_date;
-      const todayStr = new Date().toISOString().split('T')[0];
-      const yd = new Date();
-      yd.setDate(yd.getDate() - 1);
-      const yesterdayStr = yd.toISOString().split('T')[0];
-      const streakDays = profileData?.profile?.streak_days || 0;
-      if (streakDays >= 2 && lastScan === yesterdayStr) {
-        setStreakWarning(true);
       }
 
     } catch (e) {
@@ -341,13 +326,13 @@ export default function Home() {
       const isNetworkError = msg.includes("failed to fetch") || msg.includes("networkerror") || msg.includes("network error") || msg.includes("timeout") || status === 0;
 
       if (isNetworkError) {
-        const isPro = userData?.profile?.is_pro || false;
+        const isPro = hasLaunchAccess(userData?.profile);
         try {
           await addToQueue(imageBase64, geoRef.current, isPro);
           setToast("Réseau instable — photo mise en file hors ligne. Elle sera identifiée dès ta reconnexion.");
         } catch (qErr) {
           setToast(qErr.message === "QUEUE_FULL"
-            ? isPro ? "File hors ligne pleine (50/50). Reconnecte-toi." : "File hors ligne pleine (5/5). Passe Pro pour plus de capacité."
+            ? isPro ? "File hors ligne pleine (50/50). Reconnecte-toi pour synchroniser." : "File hors ligne pleine. Réessaie dès le retour du réseau."
             : "Erreur réseau — réessaie."
           );
         }
@@ -392,17 +377,9 @@ export default function Home() {
     // Snapshot pour rollback
     const snapshot = userData ? JSON.parse(JSON.stringify(userData)) : null;
 
-    // Optimistic UI — NE PAS nullifier result/capturedImage avant succès serveur
+    // Garde l'UI stable jusqu'au retour serveur pour éviter des stats fantômes.
     setSaving(true);
     setToast(`Identification de ${top.common_name}...`);
-    setUserData(prev => prev ? {
-      ...prev,
-      profile: prev.profile ? {
-        ...prev.profile,
-        total_plants: (prev.profile.total_plants || 0) + 1,
-        total_points: (prev.profile.total_points || 0) + 10,
-      } : prev.profile
-    } : prev);
 
     try {
       let lat, lng;
@@ -412,7 +389,7 @@ export default function Home() {
         );
         lat = pos.coords.latitude;
         lng = pos.coords.longitude;
-      } catch (e) {}
+      } catch {}
 
       let photoUrl = "";
       try {
@@ -463,7 +440,6 @@ export default function Home() {
 
       // Feedback haptique et sonore selon le résultat
       if (levelUp) {
-        const currentLevelData = getCurrentLevel(snapshot?.profile?.total_points || 0);
         const newLevelData = getCurrentLevel((snapshot?.profile?.total_points || 0) + xp);
         setLevelUpData({
           level: newLevelData.level,
@@ -492,7 +468,7 @@ export default function Home() {
       setSaving(false);
       setToast(null);
       window.dispatchEvent(new CustomEvent("optimistic-error", {
-        detail: { message: "Save failed — réessaie." }
+        detail: { message: "Enregistrement impossible pour l'instant — réessaie." }
       }));
       console.error("handleSave error:", err);
     }
@@ -517,7 +493,7 @@ export default function Home() {
 
   const profile = userData?.profile;
   const totalXP = profile?.total_points || 0;
-  const currentLevel = getCurrentLevel(totalXP);
+  const hasFullAccess = hasLaunchAccess(profile);
   const dataLoaded = userData !== null;
 
   // Auth loading — spinner minimal, ne pas afficher d'erreur
@@ -589,22 +565,26 @@ export default function Home() {
         >
           <Zap className="w-3.5 h-3.5 flex-shrink-0" />
           <span className="flex-1 leading-snug">{toast}</span>
-          <button className="opacity-40 text-base leading-none min-h-[44px] min-w-[44px] flex items-center justify-center" onClick={() => setToast(null)} aria-label="Dismiss">×</button>
+          <button className="opacity-40 text-base leading-none min-h-[44px] min-w-[44px] flex items-center justify-center" onClick={() => setToast(null)} aria-label="Fermer l'alerte">×</button>
         </div>,
         document.body
       )}
 
       {achievementQueue.length > 0 && (
-        <AchievementToast achievements={achievementQueue} onDone={() => setAchievementQueue([])} />
+        <Suspense fallback={null}>
+          <AchievementToast achievements={achievementQueue} onDone={() => setAchievementQueue([])} />
+        </Suspense>
       )}
 
       {levelUpData && (
-        <LevelUpCelebration
-          level={levelUpData.level}
-          label={levelUpData.label}
-          xp={levelUpData.xp}
-          onClose={() => setLevelUpData(null)}
-        />
+        <Suspense fallback={null}>
+          <LevelUpCelebration
+            level={levelUpData.level}
+            label={levelUpData.label}
+            xp={levelUpData.xp}
+            onClose={() => setLevelUpData(null)}
+          />
+        </Suspense>
       )}
 
       {showCamera && (
@@ -614,14 +594,18 @@ export default function Home() {
             <button onClick={() => setShowCamera(false)} style={{ padding: "12px 24px", background: "#2D7A1F", color: "#F2EDE4", fontWeight: "bold", fontSize: 12 }}>Fermer</button>
           </div>
         }>
-          <CameraCapture onCapture={handleCapture} onClose={() => setShowCamera(false)} coords={geoCoords} isPro={profile?.is_pro || false} />
+          <Suspense fallback={<ModalFallback label="Ouverture du scanner..." />}>
+            <CameraCapture onCapture={handleCapture} onClose={() => setShowCamera(false)} coords={geoCoords} isPro={hasFullAccess} />
+          </Suspense>
         </ErrorBoundary>
       )}
 
 
       {result && capturedImage && (
-        <PlantResult result={result} imageBase64={capturedImage} isPro={profile?.is_pro}
-          onSave={handleSave} onClose={() => { setResult(null); setCapturedImage(null); }} />
+        <Suspense fallback={<ModalFallback label="Préparation du résultat..." />}>
+          <PlantResult result={result} imageBase64={capturedImage} isPro={hasFullAccess}
+            onSave={handleSave} onClose={() => { setResult(null); setCapturedImage(null); }} />
+        </Suspense>
       )}
 
       {identifying && !showCamera && !showAudio && (
@@ -774,15 +758,19 @@ export default function Home() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: "var(--v1v-bg-overlay-full)" }}>
           <div className="w-full max-w-sm p-6 text-center" style={{ background: "var(--v1v-bg-card)", border: "1px solid var(--v1v-green-ghost)", boxShadow: "0 0 40px rgba(45,122,31,0.15)" }}>
             <Shield className="w-8 h-8 mx-auto mb-4" style={{ color: "var(--v1v-green)" }} />
-            <p className="text-xs tracking-[0.5em] uppercase mb-3" style={{ color: "var(--v1v-green-muted)" }}>Limite quotidienne atteinte</p>
-            <h2 className="text-2xl font-black uppercase tracking-wider mb-3" style={{ color: "var(--v1v-fg)" }}>Quota épuisé</h2>
-            <p className="text-sm mb-6" style={{ color: "var(--v1v-fg-muted)" }}>5 scans gratuits utilisés aujourd'hui.<br/>Passe Elite — scans illimités.</p>
-            <Link to={createPageUrl("Pricing")}>
-              <button className="w-full py-4 text-sm font-black uppercase tracking-[0.3em] mb-3 transition-all" style={{ background: "var(--v1v-green)", color: "var(--v1v-bg)" }}>
-                Débloquer l'accès Elite →
-              </button>
-            </Link>
-            <button onClick={() => setShowLimitModal(false)} className="text-xs uppercase tracking-widest" style={{ color: "var(--v1v-green-muted)" }}>Annuler</button>
+            <p className="text-xs tracking-[0.5em] uppercase mb-3" style={{ color: "var(--v1v-green-muted)" }}>Ralentissement momentané</p>
+            <h2 className="text-2xl font-black uppercase tracking-wider mb-3" style={{ color: "var(--v1v-fg)" }}>Pause scan</h2>
+            <p className="text-sm mb-6" style={{ color: "var(--v1v-fg-muted)" }}>
+              Le compteur journalier a détecté un pic d'activité. Reviens un peu plus tard et on repart.
+            </p>
+            <button
+              onClick={() => setShowLimitModal(false)}
+              className="w-full py-4 text-sm font-black uppercase tracking-[0.3em] mb-3 transition-all"
+              style={{ background: "var(--v1v-green)", color: "var(--v1v-bg)" }}
+            >
+              Continuer l'exploration
+            </button>
+            <button onClick={() => setShowLimitModal(false)} className="text-xs uppercase tracking-widest" style={{ color: "var(--v1v-green-muted)" }}>Fermer</button>
           </div>
         </div>
       )}
@@ -809,6 +797,55 @@ export default function Home() {
           </div>
         </div>
 
+        {/* BLOC 0 — Scanner principal */}
+        <BlockErrorBoundary label="Scanner indisponible">
+          <ScrollRevealSection>
+            <div className="px-5 pt-3 pb-2 relative z-10">
+              <button
+                onClick={() => {
+                  feedback('scan', { haptic: true, sound: false });
+                  setShowCamera(true);
+                }}
+                onPointerDown={(e) => {
+                  e.currentTarget.style.transform = "scale(0.97)";
+                  feedback('tap', { haptic: true, sound: false });
+                }}
+                onPointerUp={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                }}
+                className="w-full relative overflow-hidden transition-all"
+                style={{
+                  background: G,
+                  color: "var(--v1v-bg)",
+                  paddingTop: 40,
+                  paddingBottom: 40,
+                  boxShadow: "0 0 40px rgba(57,184,20,0.35), inset 0 0 60px rgba(0,0,0,0.15)",
+                }}
+              >
+                <span className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2" style={{ borderColor: "rgba(0,0,0,0.4)" }} />
+                <span className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2" style={{ borderColor: "rgba(0,0,0,0.4)" }} />
+                <span className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2" style={{ borderColor: "rgba(0,0,0,0.4)" }} />
+                <span className="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2" style={{ borderColor: "rgba(0,0,0,0.4)" }} />
+                <div className="flex flex-col items-center" style={{ position: "relative", zIndex: 1 }}>
+                  <div style={{ position: "relative", width: 56, height: 56, marginBottom: 10 }}>
+                    <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.35)", animation: "scanPulse 2.5s ease-in-out infinite" }} />
+                    <div style={{ position: "absolute", inset: 10, borderRadius: "50%", border: "1.5px solid rgba(0,0,0,0.25)" }} />
+                    <div style={{ position: "absolute", inset: 22, borderRadius: "50%", background: "rgba(0,0,0,0.3)" }} />
+                  </div>
+                  <p style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.45em", textTransform: "uppercase", color: "rgba(0,0,0,0.75)" }}>SCANNER BIODIV</p>
+                </div>
+              </button>
+              <div className="flex items-center justify-center gap-3 mt-3">
+                <div className="flex-1 h-px" style={{ background: "rgba(45,122,31,0.15)" }} />
+                <p key={scanTextIdx} className="text-[9px] tracking-[0.4em] uppercase font-black" style={{ color: "rgba(57,184,20,0.45)", animation: "fadeInText 0.4s ease-in" }}>
+                  {SCAN_TEXTS[scanTextIdx]}
+                </p>
+                <div className="flex-1 h-px" style={{ background: "rgba(45,122,31,0.15)" }} />
+              </div>
+            </div>
+          </ScrollRevealSection>
+        </BlockErrorBoundary>
+
         {/* BLOC 1 — Progression */}
         <BlockErrorBoundary label="Progression indisponible">
           {!dataLoaded ? (
@@ -829,13 +866,34 @@ export default function Home() {
           {dataLoaded && geoPermission === "granted" && geoCoords && (
             <ScrollRevealSection>
               <div className="px-5 py-3">
-                <LocalZoneWidget userEmail={userData?.user?.email} geoCoords={geoCoords} />
+                <Suspense fallback={<SectionFallback title="Lecture de ta zone..." compact />}>
+                  <LocalZoneWidget
+                    userEmail={userData?.user?.email}
+                    geoCoords={geoCoords}
+                    profile={userData?.profile}
+                    discoveries={userData?.discoveries || []}
+                  />
+                </Suspense>
                 <Link to={createPageUrl("TerritorialMap")} className="block mt-3">
                   <button className="w-full py-3 text-xs font-black uppercase tracking-[0.3em] transition-all" style={{ background: "rgba(45,122,31,0.2)", border: "1px solid rgba(45,122,31,0.4)", color: G }}>
-                    Voir la carte de contrôle →
+                    Ouvrir la carte du vivant →
                   </button>
                 </Link>
               </div>
+            </ScrollRevealSection>
+          )}
+        </BlockErrorBoundary>
+
+        <BlockErrorBoundary label="Alertes terrain indisponibles">
+          {dataLoaded && geoPermission === "granted" && geoCoords && userData?.user?.email && (
+            <ScrollRevealSection>
+              <Suspense fallback={<SectionFallback title="Synchronisation des alertes..." />}>
+                <TerrainAlertDeck
+                  userEmail={userData.user.email}
+                  geoCoords={geoCoords}
+                  discoveries={userData?.discoveries || []}
+                />
+              </Suspense>
             </ScrollRevealSection>
           )}
         </BlockErrorBoundary>
@@ -844,7 +902,7 @@ export default function Home() {
         {geoPermission === "unknown" && (
           <div className="mx-5 my-3 px-3 py-2.5 flex items-center gap-3 relative z-10" style={{ background: "rgba(45,122,31,0.07)", border: "1px solid rgba(45,122,31,0.2)" }}>
             <MapPin className="w-3.5 h-3.5 flex-shrink-0" style={{ color: G }} />
-            <p className="text-[9px] font-black uppercase tracking-wider flex-1" style={{ color: "var(--v1v-fg-muted)" }}>Géoloc requise pour territoires</p>
+            <p className="text-[9px] font-black uppercase tracking-wider flex-1" style={{ color: "var(--v1v-fg-muted)" }}>Géolocalisation requise pour lire les zones</p>
             <button onClick={requestGeo} className="text-[8px] font-black uppercase tracking-wider px-2.5 py-1.5 flex-shrink-0 transition-opacity active:opacity-60" style={{ background: G, color: "var(--v1v-bg)" }}>Autoriser</button>
           </div>
         )}
@@ -854,64 +912,53 @@ export default function Home() {
           {dataLoaded && userData?.user?.email && geoCoords && (
             <ScrollRevealSection>
               <div className="px-5 py-0">
-                <CurrentZoneStatus
-                  userEmail={userData.user.email}
-                  lat={geoCoords.lat}
-                  lng={geoCoords.lng}
-                  userPlants={userData?.discoveries?.length || 0}
-                />
+                <Suspense fallback={<SectionFallback title="Lecture du terrain local..." compact />}>
+                  <CurrentZoneStatus
+                    userEmail={userData.user.email}
+                    lat={geoCoords.lat}
+                    lng={geoCoords.lng}
+                    discoveries={userData?.discoveries || []}
+                  />
+                </Suspense>
               </div>
             </ScrollRevealSection>
           )}
         </BlockErrorBoundary>
 
-        {/* BLOC 3 — Scanner principal */}
-        <BlockErrorBoundary label="Scanner indisponible">
-          <ScrollRevealSection>
-            <div className="px-5 py-3 relative z-10">
-              <button
-              onClick={() => {
-                feedback('scan', { haptic: true, sound: false });
-                setShowCamera(true);
-              }}
-              onPointerDown={(e) => {
-                e.currentTarget.style.transform = "scale(0.97)";
-                feedback('tap', { haptic: true, sound: false });
-              }}
-              onPointerUp={(e) => {
-                e.currentTarget.style.transform = "scale(1)";
-              }}
-              className="w-full relative overflow-hidden transition-all"
-              style={{
-                background: G,
-                color: "var(--v1v-bg)",
-                paddingTop: 40,
-                paddingBottom: 40,
-                boxShadow: "0 0 40px rgba(57,184,20,0.35), inset 0 0 60px rgba(0,0,0,0.15)",
-              }}
-            >
-              <span className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2" style={{ borderColor: "rgba(0,0,0,0.4)" }} />
-              <span className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2" style={{ borderColor: "rgba(0,0,0,0.4)" }} />
-              <span className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2" style={{ borderColor: "rgba(0,0,0,0.4)" }} />
-              <span className="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2" style={{ borderColor: "rgba(0,0,0,0.4)" }} />
-              <div className="flex flex-col items-center" style={{ position: "relative", zIndex: 1 }}>
-                <div style={{ position: "relative", width: 56, height: 56, marginBottom: 10 }}>
-                  <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.35)", animation: "scanPulse 2.5s ease-in-out infinite" }} />
-                  <div style={{ position: "absolute", inset: 10, borderRadius: "50%", border: "1.5px solid rgba(0,0,0,0.25)" }} />
-                  <div style={{ position: "absolute", inset: 22, borderRadius: "50%", background: "rgba(0,0,0,0.3)" }} />
+        {/* BLOC 4 — Réseau terrain */}
+        <BlockErrorBoundary label="Réseau terrain indisponible">
+          {dataLoaded && userData?.user?.email && (
+            <ScrollRevealSection>
+              <div className="px-5 pt-4 pb-2">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="h-px flex-1" style={{ background: "rgba(45,122,31,0.15)" }} />
+                  <p className="text-[8px] font-black uppercase tracking-[0.42em]" style={{ color: "rgba(57,184,20,0.45)" }}>
+                    RÉSEAU TERRAIN
+                  </p>
+                  <div className="h-px flex-1" style={{ background: "rgba(45,122,31,0.15)" }} />
                 </div>
-                <p style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.45em", textTransform: "uppercase", color: "rgba(0,0,0,0.75)" }}>SCANNER BIODIV</p>
+                <p className="text-[10px] text-center leading-relaxed mb-3" style={{ color: "rgba(45,122,31,0.55)" }}>
+                  Observe les dernières traces du terrain réel et compare ton rythme à celui des autres naturalistes.
+                </p>
               </div>
-            </button>
-            <div className="flex items-center justify-center gap-3 mt-3">
-              <div className="flex-1 h-px" style={{ background: "rgba(45,122,31,0.15)" }} />
-              <p key={scanTextIdx} className="text-[9px] tracking-[0.4em] uppercase font-black" style={{ color: "rgba(57,184,20,0.45)", animation: "fadeInText 0.4s ease-in" }}>
-                {SCAN_TEXTS[scanTextIdx]}
-              </p>
-              <div className="flex-1 h-px" style={{ background: "rgba(45,122,31,0.15)" }} />
-            </div>
-            </div>
-          </ScrollRevealSection>
+              <Suspense fallback={<SectionFallback title="Connexion au réseau terrain..." />}>
+                <CommunityFeed userEmail={userData.user.email} geoCoords={geoCoords} />
+              </Suspense>
+            </ScrollRevealSection>
+          )}
+        </BlockErrorBoundary>
+
+        <BlockErrorBoundary label="Escouade indisponible">
+          {dataLoaded && userData?.user?.email && userData?.profile && (
+            <ScrollRevealSection>
+              <Suspense fallback={<SectionFallback title="Réveil de l'escouade..." />}>
+                <SquadPulseCard
+                  userEmail={userData.user.email}
+                  profile={userData.profile}
+                />
+              </Suspense>
+            </ScrollRevealSection>
+          )}
         </BlockErrorBoundary>
 
         {/* Spacer pour bottom nav */}

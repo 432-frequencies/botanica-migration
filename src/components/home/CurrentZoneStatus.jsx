@@ -47,19 +47,19 @@ export default function CurrentZoneStatus({ userEmail, lat, lng, discoveries = [
   const progressPct = Math.min(100, (userSpecies / targetScore) * 100);
   const tone = isLeader ? GOLD : canTakeCrown ? G : noLeader ? "#53C1FF" : G;
   const statusTitle = isLeader
-    ? "Reference locale"
+    ? "Referent local"
     : canTakeCrown
-      ? "Contribution decisive"
+      ? "Observation cle"
       : noLeader
         ? "Zone a initier"
         : "Observation en cours";
   const mission = isLeader
     ? "Ajoute une espece locale pour consolider la documentation de cette zone."
     : canTakeCrown
-      ? "Tu as deja le score. Ouvre la carte et valide une contribution majeure ici."
+      ? "Tu as deja le score. Ouvre la carte et enregistre une observation cle ici."
       : noLeader
         ? "Une seule espece unique ici suffit pour lancer la documentation locale."
-        : `Encore ${gap} especes uniques pour devenir la reference devant ${leader.display_name}.`;
+        : `Encore ${gap} especes uniques pour devenir le referent devant ${leader.display_name}.`;
 
   return (
     <div
@@ -104,7 +104,7 @@ export default function CurrentZoneStatus({ userEmail, lat, lng, discoveries = [
       <div className="grid grid-cols-2 gap-2 mt-2" style={{ color: "rgba(226,234,224,0.72)" }}>
         <div>
           <p className="text-[7px] font-black uppercase tracking-[0.22em]" style={{ color: "rgba(226,234,224,0.4)" }}>
-            Reference
+            Referent
           </p>
           <p className="text-[10px] font-black uppercase tracking-[0.08em]" style={{ color: tone }}>
             {noLeader ? "A initier" : leader.display_name}

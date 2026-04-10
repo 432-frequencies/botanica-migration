@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Crown, Share2, X, MapPin } from "lucide-react";
-import html2canvas from "html2canvas";
+import { Compass, Share2, X, MapPin } from "lucide-react";
+import { useZoneLabel } from "@/lib/locationMeta";
 
 export default function ConquestVictoryModal({ zone, userDisplayName, onClose }) {
   const [sharing, setSharing] = useState(false);
   const cardRef = useRef(null);
+  const { label: zoneName } = useZoneLabel(zone?.zone_id);
 
   useEffect(() => {
     if (zone) {
@@ -19,6 +20,7 @@ export default function ConquestVictoryModal({ zone, userDisplayName, onClose })
   const handleShare = async () => {
     setSharing(true);
     try {
+      const html2canvas = (await import("html2canvas")).default;
       const canvas = await html2canvas(cardRef.current, {
         backgroundColor: "#0A140A",
         scale: 2,
@@ -27,12 +29,12 @@ export default function ConquestVictoryModal({ zone, userDisplayName, onClose })
       });
 
       const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
-      const file = new File([blob], "w1ld-zone-conquise.png", { type: "image/png" });
+      const file = new File([blob], "w1ld-zone-documentee.png", { type: "image/png" });
 
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
-          title: "Zone conquise sur W1LD",
-          text: `🌿 Je suis la nouvelle Légende de la zone ${zone.zone_id} sur W1LD Field OS !`,
+          title: "Zone documentée sur W1LD",
+          text: `J'ai enrichi la documentation locale de ${zoneName || zone.zone_id} sur W1LD.`,
           files: [file],
         });
       } else {
@@ -40,11 +42,11 @@ export default function ConquestVictoryModal({ zone, userDisplayName, onClose })
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = "w1ld-zone-conquise.png";
+        a.download = "w1ld-zone-documentee.png";
         a.click();
         URL.revokeObjectURL(url);
       }
-    } catch (e) {
+    } catch {
       // silently fail
     }
     setSharing(false);
@@ -84,7 +86,7 @@ export default function ConquestVictoryModal({ zone, userDisplayName, onClose })
               style={{ background: "radial-gradient(ellipse 70% 50% at 50% 20%, rgba(196,154,10,0.06) 0%, transparent 70%)" }}
             />
 
-            {/* Crown */}
+            {/* Marker */}
             <motion.div
               initial={{ y: -10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -95,7 +97,7 @@ export default function ConquestVictoryModal({ zone, userDisplayName, onClose })
                 className="w-14 h-14 flex items-center justify-center"
                 style={{ background: "rgba(196,154,10,0.08)", border: "1px solid rgba(196,154,10,0.25)" }}
               >
-                <Crown className="w-7 h-7" style={{ color: "var(--v1v-amber)" }} />
+                <Compass className="w-7 h-7" style={{ color: "var(--v1v-amber)" }} />
               </div>
             </motion.div>
 
@@ -106,9 +108,9 @@ export default function ConquestVictoryModal({ zone, userDisplayName, onClose })
               transition={{ delay: 0.2 }}
               className="text-center mb-1"
             >
-              <p className="text-[8px] font-black uppercase tracking-[0.4em] mb-2" style={{ color: "rgba(196,154,10,0.5)" }}>W1LD Field OS</p>
-              <h1 className="text-2xl font-black uppercase leading-none mb-2" style={{ color: "var(--v1v-amber)", letterSpacing: "0.06em" }}>Zone conquise</h1>
-              <p className="text-[11px] font-black uppercase tracking-[0.15em]" style={{ color: "var(--v1v-fg-muted)" }}>Tu es la nouvelle Légende</p>
+              <p className="text-[8px] font-black uppercase tracking-[0.4em] mb-2" style={{ color: "rgba(196,154,10,0.5)" }}>W1LD Field Notes</p>
+              <h1 className="text-2xl font-black uppercase leading-none mb-2" style={{ color: "var(--v1v-amber)", letterSpacing: "0.06em" }}>Zone documentée</h1>
+              <p className="text-[11px] font-black uppercase tracking-[0.15em]" style={{ color: "var(--v1v-fg-muted)" }}>{zoneName || zone.zone_id}</p>
             </motion.div>
 
             {/* Divider */}
@@ -126,7 +128,7 @@ export default function ConquestVictoryModal({ zone, userDisplayName, onClose })
               className="text-center"
             >
               <p className="text-4xl font-black number-display mb-1" style={{ color: "var(--v1v-amber)" }}>{zone.userScore}</p>
-              <p className="text-[8px] font-black uppercase tracking-[0.3em]" style={{ color: "rgba(196,154,10,0.45)" }}>espèces dans cette zone</p>
+              <p className="text-[8px] font-black uppercase tracking-[0.3em]" style={{ color: "rgba(196,154,10,0.45)" }}>espèces documentées ici</p>
               <p className="text-[11px] font-black uppercase tracking-[0.12em] mt-3" style={{ color: "var(--v1v-fg-muted)" }}>
                 {userDisplayName || "Agent W1LD"}
               </p>
@@ -137,7 +139,7 @@ export default function ConquestVictoryModal({ zone, userDisplayName, onClose })
               className="absolute top-3 right-3 px-2 py-1 text-[7px] font-black uppercase tracking-[0.15em]"
               style={{ background: "rgba(196,154,10,0.1)", border: "1px solid rgba(196,154,10,0.22)", color: "rgba(196,154,10,0.6)" }}
             >
-              Légende
+              Note de terrain
             </div>
           </div>
 

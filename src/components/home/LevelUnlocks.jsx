@@ -1,4 +1,4 @@
-import { Lock, CheckCircle, Zap } from "lucide-react";
+import { Lock, CheckCircle } from "lucide-react";
 import { LEVELS, getCurrentLevel } from "./XPLevelBar";
 
 export default function LevelUnlocks({ totalXP = 0 }) {

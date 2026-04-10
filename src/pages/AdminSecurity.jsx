@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
-import { AlertTriangle, Shield, CheckCircle, X, RotateCcw } from 'lucide-react';
+import { Shield, CheckCircle, X } from 'lucide-react';
 
 export default function AdminSecurity() {
   const [suspects, setSuspects] = useState([]);

@@ -1,15 +1,15 @@
-import { useState } from "react";
-import { Crown, Crosshair } from "lucide-react";
+import { Compass, Crosshair } from "lucide-react";
+import { useZoneLabel } from "@/lib/locationMeta";
 import { useNavigate } from "react-router-dom";
 
 export default function MapHUD({ currentZone, userEmail, userZoneId, leaders, userScores }) {
   const navigate = useNavigate();
-  const [showScan, setShowScan] = useState(false);
-
-  const zone = userZoneId ? { zone_id: userZoneId } : null;
+  const zone = currentZone || (userZoneId ? { zone_id: userZoneId } : null);
+  const { label: zoneName } = useZoneLabel(zone?.zone_id);
   const leader = zone ? leaders[zone.zone_id] : null;
   const userScore = zone ? (userScores[zone.zone_id] || 0) : 0;
   const isOwned = leader?.user_email === userEmail;
+  const isLocalZone = zone?.zone_id === userZoneId;
 
   const handleScan = () => {
     navigate("/?openCamera=true");
@@ -53,11 +53,11 @@ export default function MapHUD({ currentZone, userEmail, userZoneId, leaders, us
           {/* Zone Info */}
           <div className="flex flex-col gap-1">
             <p className="text-[7px] font-black uppercase tracking-[0.2em]" style={{ color: "var(--v1v-fg-faint)" }}>
-              Zone
+              {isLocalZone ? "Zone locale" : "Zone observée"}
             </p>
             {zone ? (
-              <p className="text-lg font-black number-display" style={{ color: "var(--v1v-green)" }}>
-                {zone.zone_id.split("_")[0]}
+              <p className="text-[10px] font-black uppercase leading-tight" style={{ color: "var(--v1v-green)" }}>
+                {zoneName || zone.zone_id}
               </p>
             ) : (
               <p className="text-sm" style={{ color: "var(--v1v-fg-faint)" }}>—</p>
@@ -67,11 +67,11 @@ export default function MapHUD({ currentZone, userEmail, userZoneId, leaders, us
           {/* Leader Status */}
           <div className="flex flex-col gap-1">
             <p className="text-[7px] font-black uppercase tracking-[0.2em]" style={{ color: "var(--v1v-fg-faint)" }}>
-              Leader
+              Référence
             </p>
             {isOwned ? (
               <div className="flex items-center gap-1">
-                <Crown className="w-3 h-3" style={{ color: "var(--v1v-amber)" }} />
+                <Compass className="w-3 h-3" style={{ color: "var(--v1v-amber)" }} />
                 <span className="text-xs font-black" style={{ color: "var(--v1v-amber)" }}>Vous</span>
               </div>
             ) : leader ? (
@@ -79,14 +79,14 @@ export default function MapHUD({ currentZone, userEmail, userZoneId, leaders, us
                 {leader.display_name.slice(0, 8)}
               </p>
             ) : (
-              <p className="text-xs font-black" style={{ color: "var(--v1v-blue)" }}>Libre</p>
+              <p className="text-xs font-black" style={{ color: "var(--v1v-blue)" }}>À initier</p>
             )}
           </div>
 
           {/* Score */}
           <div className="flex flex-col gap-1 text-right">
             <p className="text-[7px] font-black uppercase tracking-[0.2em]" style={{ color: "var(--v1v-fg-faint)" }}>
-              Espèces
+              Observations
             </p>
             <p className="text-lg font-black number-display" style={{ color: "var(--v1v-green)" }}>
               {userScore}
@@ -127,7 +127,7 @@ export default function MapHUD({ currentZone, userEmail, userZoneId, leaders, us
           }}
         >
           <Crosshair className="w-4 h-4" />
-          Scanner
+          Observer
         </button>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/api/supabaseClient";
-import { Sun, Moon, Leaf, ChevronRight } from "lucide-react";
+import { Sun } from "lucide-react";
 
 const MOON_PHASES = {
   new_moon: { emoji: "🌑", label: "New Moon" },

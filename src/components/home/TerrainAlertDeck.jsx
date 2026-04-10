@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, ArrowUpRight, Crown, Shield, Target } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Compass, Shield, Target } from "lucide-react";
 import { supabase } from "@/api/supabaseClient";
 import { useZoneLabel } from "@/lib/locationMeta";
 import { createPageUrl } from "@/utils";
@@ -11,7 +11,7 @@ const SNAPSHOT_PREFIX = "w1ld-terrain-snapshot-v1";
 function zoneLink(zoneId) {
   const center = getZoneCenter(zoneId);
   if (!center) return createPageUrl("TerritorialMap");
-  return `${createPageUrl("TerritorialMap")}?lat=${center.lat}&lng=${center.lng}`;
+  return `${createPageUrl("TerritorialMap")}?lat=${center.lat}&lng=${center.lng}&zoneId=${encodeURIComponent(zoneId)}`;
 }
 
 function countNearbyFreeZones(zoneIds, leadersByZone) {
@@ -130,7 +130,7 @@ export default function TerrainAlertDeck({ userEmail, geoCoords, discoveries = [
       return {
         zoneId,
         gap,
-        leaderName: leader.display_name || "le leader",
+        leaderName: leader.display_name || "le referent",
         userScore,
         leaderScore: leader.species_count || 0,
       };
@@ -179,14 +179,14 @@ export default function TerrainAlertDeck({ userEmail, geoCoords, discoveries = [
   } else if (readyTarget) {
     primaryAlert = {
       tone: readyTarget.free ? "#53C1FF" : "var(--v1v-green)",
-      icon: readyTarget.free ? Target : Crown,
+      icon: readyTarget.free ? Target : Compass,
       badge: readyTarget.free ? "Zone à initier" : "Contribution décisive",
       title: readyTarget.free
         ? `Première trace : ${readyTargetLabel || readyTarget.zoneId}`
-        : `Référence accessible : ${readyTargetLabel || readyTarget.zoneId}`,
+        : `Repère accessible : ${readyTargetLabel || readyTarget.zoneId}`,
       description: readyTarget.free
         ? "Aucune référence locale n'existe encore ici. Tu as déjà le minimum pour lancer la documentation."
-        : `Tu as déjà le score pour dépasser ${readyTarget.leaderName}. Passe sur la carte et signe une contribution majeure.`,
+        : `Tu as déjà le score pour dépasser ${readyTarget.leaderName}. Passe sur la carte et enregistre une observation clé.`,
       link: zoneLink(readyTarget.zoneId),
       metricLabel: "Score",
       metricValue: readyTarget.userScore,
@@ -197,7 +197,7 @@ export default function TerrainAlertDeck({ userEmail, geoCoords, discoveries = [
       icon: Target,
       badge: "Progression locale",
       title: `Zone à enrichir : ${pressureTargetLabel || pressureTarget.zoneId}`,
-      description: `Encore ${pressureTarget.gap} espèce${pressureTarget.gap > 1 ? "s" : ""} pour devenir la référence devant ${pressureTarget.leaderName}.`,
+      description: `Encore ${pressureTarget.gap} espèce${pressureTarget.gap > 1 ? "s" : ""} pour devenir le référent devant ${pressureTarget.leaderName}.`,
       link: zoneLink(pressureTarget.zoneId),
       metricLabel: "Manque",
       metricValue: `-${pressureTarget.gap}`,
@@ -216,10 +216,10 @@ export default function TerrainAlertDeck({ userEmail, geoCoords, discoveries = [
   } else if (gainedZone) {
     primaryAlert = {
       tone: "var(--v1v-green)",
-      icon: Crown,
+      icon: Compass,
       badge: "Nouvelle référence",
       title: `Zone documentée : ${gainedZoneLabel || gainedZone}`,
-      description: "Ta progression a bien été consolidée. Tu peux partager cette contribution ou poursuivre vers une autre zone proche.",
+      description: "Ta progression a bien été consolidée. Tu peux partager cette note de terrain ou poursuivre vers une autre zone proche.",
       link: zoneLink(gainedZone),
       metricLabel: "Impact",
       metricValue: "+1",

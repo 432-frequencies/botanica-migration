@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/api/supabaseClient";
-import { Crown, RefreshCw, MapPin, Sparkles } from "lucide-react";
+import { Compass, RefreshCw, MapPin } from "lucide-react";
 import ZoneDetailPanel from "@/components/map/ZoneDetailPanel";
 import ConquestVictoryModal from "@/components/map/ConquestVictoryModal";
 import ChampionCelebration from "@/components/map/ChampionCelebration";
 import MapHUD from "@/components/map/MapHUD";
+import { resolveDisplayName } from "@/lib/displayName";
 
 const ZONE_DEG = 0.0045; // ~500m par carré
 
@@ -69,6 +70,7 @@ export default function TerritorialMap() {
   const params = new URLSearchParams(window.location.search);
   const targetLat = params.get('lat') ? parseFloat(params.get('lat')) : null;
   const targetLng = params.get('lng') ? parseFloat(params.get('lng')) : null;
+  const targetZoneId = params.get('zoneId') || null;
 
   const [userLocation, setUserLocation] = useState(null);
   const [locationError, setLocationError] = useState(false);
@@ -106,11 +108,34 @@ export default function TerritorialMap() {
     loadData();
   }, [userLocation]);
 
+  useEffect(() => {
+    if (!targetZoneId) return;
+    const targetLeader = leaders[targetZoneId] || null;
+    const targetScore = userScores[targetZoneId] || 0;
+    setSelectedZone({
+      zone_id: targetZoneId,
+      leader: targetLeader,
+      userScore: targetScore,
+    });
+  }, [targetZoneId, leaders, userScores]);
+
   const loadData = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     setUserEmail(user?.email);
-    if (user?.user_metadata?.full_name) setUserDisplayName(user.user_metadata.full_name);
+    if (user?.email) {
+      const { data: profileRows } = await supabase
+        .from("user_profiles")
+        .select("display_name")
+        .eq("user_email", user.email)
+        .limit(1);
+
+      setUserDisplayName(resolveDisplayName({
+        displayName: profileRows?.[0]?.display_name,
+        fullName: user.user_metadata?.full_name,
+        email: user.email,
+      }));
+    }
 
     // Load zone leaders for surrounding area
     const zoneIds = getSurroundingZoneIds(userLocation.lat, userLocation.lng, GRID_RADIUS);
@@ -128,7 +153,7 @@ export default function TerritorialMap() {
       cur.user_email === user?.email && (!prevMap[zid] || prevMap[zid].user_email !== user?.email)
     );
     if (lostZones.length > 0) {
-      setNotifications(n => [...n, { id: Date.now() + 1, type: "lost", msg: `Tu as perdu ${lostZones.length} zone${lostZones.length > 1 ? "s" : ""}` }]);
+      setNotifications(n => [...n, { id: Date.now() + 1, type: "lost", msg: `${lostZones.length} zone${lostZones.length > 1 ? "s ont" : " a"} changé de référence` }]);
     }
     prevLeadersRef.current = leaderMap;
     setLeaders(leaderMap);
@@ -151,7 +176,7 @@ export default function TerritorialMap() {
         l.user_email !== user.email && (newScores[zid] || 0) > l.species_count
       ).length;
       if (takeableCount > 0) {
-        setNotifications(n => [...n, { id: Date.now() + 2, type: "takeable", msg: `Tu peux prendre ${takeableCount} zone${takeableCount > 1 ? "s" : ""}` }]);
+        setNotifications(n => [...n, { id: Date.now() + 2, type: "takeable", msg: `${takeableCount} zone${takeableCount > 1 ? "s peuvent" : " peut"} être enrichie${takeableCount > 1 ? "s" : ""}` }]);
       }
 
       // Detect zones where user leads but someone is close (gap ≤ 2)
@@ -171,6 +196,15 @@ export default function TerritorialMap() {
     } else {
       setUserScores(newScores);
     }
+
+    if (targetZoneId && zoneIds.includes(targetZoneId)) {
+      setSelectedZone({
+        zone_id: targetZoneId,
+        leader: leaderMap[targetZoneId] || null,
+        userScore: newScores[targetZoneId] || 0,
+      });
+    }
+
     setLoading(false);
   };
 
@@ -180,7 +214,11 @@ export default function TerritorialMap() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const displayName = user.user_metadata?.full_name || user.email.split('@')[0];
+      const displayName = resolveDisplayName({
+        displayName: userDisplayName,
+        fullName: user.user_metadata?.full_name,
+        email: user.email,
+      });
       const { data: discoveries } = await supabase.from('plant_discoveries').select('*').eq('user_email', user.email);
       // Recompute zone scores from discoveries
       const zoneMap = {};
@@ -230,7 +268,7 @@ export default function TerritorialMap() {
             Localisation requise
           </p>
           <p className="text-xs" style={{ color: "var(--v1v-fg-muted)" }}>
-            Activez la géolocalisation pour accéder à la carte territoriale.
+            Activez la géolocalisation pour accéder à la carte du vivant.
           </p>
         </div>
       </div>
@@ -243,7 +281,7 @@ export default function TerritorialMap() {
         <div className="text-center">
           <div className="w-8 h-8 rounded-full border-2 animate-spin mx-auto mb-3" style={{ borderColor: "var(--v1v-blue)", borderTopColor: "transparent" }} />
           <p className="text-[9px] font-black uppercase tracking-[0.5em]" style={{ color: "rgba(43,107,232,0.5)" }}>
-            Chargement des zones…
+            Chargement du terrain...
           </p>
         </div>
       </div>
@@ -291,7 +329,7 @@ export default function TerritorialMap() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <MapPin className="w-3 h-3" style={{ color: "var(--v1v-green)" }} />
-            <p className="text-[9px] font-black uppercase tracking-[0.25em]" style={{ color: "var(--v1v-fg-faint)" }}>Territoire</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.25em]" style={{ color: "var(--v1v-fg-faint)" }}>Carte du vivant</p>
           </div>
           <button
             onClick={handleSync}
@@ -348,6 +386,7 @@ export default function TerritorialMap() {
             const isConquerable = !isOwned && leader && uScore > leader.species_count;
             const isFree = !leader;
             const isUser = zone_id === userZoneId;
+            const isSelected = selectedZone?.zone_id === zone_id;
 
             const [zLat, zLng] = zone_id.split("_").map(Number);
             const dLat = baseZLat + GRID_RADIUS - zLat;
@@ -357,10 +396,14 @@ export default function TerritorialMap() {
 
             let bg, border, boxShadow;
             if (isOwned) {
-              // Zone conquise : style doré avec glow
-              bg = "linear-gradient(135deg, rgba(196,154,10,0.25) 0%, rgba(255,215,0,0.15) 100%)";
-              border = "rgba(196,154,10,0.7)";
-              boxShadow = "0 0 12px rgba(196,154,10,0.4), inset 0 0 20px rgba(255,215,0,0.1)";
+              // Zone documentée : présence dorée chaleureuse
+              bg = isSelected
+                ? "linear-gradient(145deg, rgba(196,154,10,0.6) 0%, rgba(255,215,0,0.28) 45%, rgba(120,78,0,0.2) 100%)"
+                : "linear-gradient(145deg, rgba(196,154,10,0.42) 0%, rgba(255,215,0,0.2) 45%, rgba(120,78,0,0.16) 100%)";
+              border = isSelected ? "rgba(255,215,0,0.95)" : "rgba(196,154,10,0.82)";
+              boxShadow = isSelected
+                ? "0 0 0 1px rgba(255,215,0,0.55), 0 0 28px rgba(255,215,0,0.52), inset 0 0 34px rgba(255,215,0,0.18)"
+                : "0 0 20px rgba(196,154,10,0.5), inset 0 0 28px rgba(255,215,0,0.12)";
             } else if (isConquerable) {
               bg = "rgba(46,168,15,0.14)";
               border = "rgba(46,168,15,0.45)";
@@ -378,6 +421,14 @@ export default function TerritorialMap() {
               border = isOwned ? "rgba(196,154,10,0.9)" : "rgba(59,125,232,0.75)";
               boxShadow = isOwned ? "0 0 16px rgba(196,154,10,0.6), inset 0 0 24px rgba(255,215,0,0.15)" : "0 0 12px rgba(59,125,232,0.4)";
             }
+            if (isSelected && !isOwned) {
+              border = isConquerable ? "rgba(46,168,15,0.85)" : isFree ? "rgba(59,125,232,0.8)" : "rgba(255,255,255,0.4)";
+              boxShadow = isConquerable
+                ? "0 0 18px rgba(46,168,15,0.35), inset 0 0 18px rgba(46,168,15,0.08)"
+                : isFree
+                ? "0 0 18px rgba(59,125,232,0.3), inset 0 0 18px rgba(59,125,232,0.08)"
+                : "0 0 12px rgba(255,255,255,0.12)";
+            }
 
             return (
               <button
@@ -390,7 +441,7 @@ export default function TerritorialMap() {
                   width: PX_PER_ZONE - 2,
                   height: PX_PER_ZONE - 2,
                   background: bg,
-                  border: `${isUser ? 2 : 1}px solid ${border}`,
+                  border: `${isOwned ? 3 : isUser ? 2 : 1}px solid ${border}`,
                   boxShadow: boxShadow,
                   display: "flex",
                   flexDirection: "column",
@@ -398,17 +449,75 @@ export default function TerritorialMap() {
                   justifyContent: "center",
                   gap: 1,
                   padding: 2,
+                  overflow: "visible",
                   transition: "all 0.3s ease",
                   cursor: "pointer",
                 }}
               >
+                {isOwned && (
+                  <>
+                    <div
+                      className="absolute pointer-events-none"
+                      style={{
+                        top: -14,
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        animation: "championCrownFloat 2.2s ease-in-out infinite",
+                        zIndex: 3,
+                      }}
+                    >
+                      <div
+                        className="flex items-center justify-center"
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: 999,
+                          background: isSelected
+                            ? "radial-gradient(circle, rgba(255,245,190,0.98) 0%, rgba(255,215,0,0.92) 55%, rgba(196,154,10,0.96) 100%)"
+                            : "radial-gradient(circle, rgba(255,237,160,0.96) 0%, rgba(255,215,0,0.86) 55%, rgba(196,154,10,0.9) 100%)",
+                          border: "1px solid rgba(255,240,170,0.95)",
+                          boxShadow: isSelected
+                            ? "0 0 22px rgba(255,215,0,0.6), 0 4px 14px rgba(0,0,0,0.35)"
+                            : "0 0 16px rgba(255,215,0,0.45), 0 4px 12px rgba(0,0,0,0.28)",
+                        }}
+                      >
+                        <Compass style={{ width: 12, height: 12, color: "#5F4100" }} />
+                      </div>
+                    </div>
+                    <div
+                      className="absolute -inset-[4px] pointer-events-none"
+                      style={{
+                        border: `2px solid ${isSelected ? "rgba(255,235,150,0.95)" : "rgba(255,215,0,0.58)"}`,
+                        boxShadow: "0 0 18px rgba(255,215,0,0.28)",
+                        animation: "ownedZonePulse 2.4s ease-in-out infinite",
+                      }}
+                    />
+                    <div
+                      className="absolute inset-[3px] pointer-events-none"
+                      style={{
+                        border: `1px solid ${isSelected ? "rgba(255,235,150,0.7)" : "rgba(255,235,150,0.35)"}`,
+                        boxShadow: isSelected ? "inset 0 0 18px rgba(255,235,150,0.16)" : "none",
+                      }}
+                    />
+                    <div
+                      className="absolute top-1 left-1 px-1.5 py-[1px] text-[6px] font-black tracking-[0.18em]"
+                      style={{
+                        background: "rgba(255,215,0,0.14)",
+                        color: "rgba(255,235,150,0.95)",
+                        border: "1px solid rgba(255,215,0,0.28)",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      REPERE
+                    </div>
+                  </>
+                )}
                 {isUser && (
                   <div
                     className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full"
                     style={{ background: isOwned ? "var(--v1v-amber)" : "var(--v1v-blue)" }}
                   />
                 )}
-                {isOwned && <Crown style={{ width: 9, height: 9, color: "var(--v1v-amber)" }} />}
                 {leader && (
                   <>
                     <span className="font-black text-center leading-none" style={{ fontSize: 8, color: isOwned ? "var(--v1v-amber)" : "var(--v1v-fg-muted)", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -461,6 +570,16 @@ export default function TerritorialMap() {
         zone={championZone}
         onClose={() => setChampionZone(null)}
       />
+      <style>{`
+        @keyframes ownedZonePulse {
+          0%, 100% { opacity: 0.45; transform: scale(0.98); }
+          50% { opacity: 1; transform: scale(1.04); }
+        }
+        @keyframes championCrownFloat {
+          0%, 100% { transform: translateX(-50%) translateY(0); }
+          50% { transform: translateX(-50%) translateY(-3px); }
+        }
+      `}</style>
     </div>
   );
 }

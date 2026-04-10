@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
-import { Zap, TrendingUp, Award } from "lucide-react";
+import { Zap, TrendingUp } from "lucide-react";
 import { feedback } from "@/utils/feedback";
 
 /**

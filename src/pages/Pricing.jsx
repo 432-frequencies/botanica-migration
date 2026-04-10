@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createPageUrl } from "@/utils";
-import { Check, Crown, ArrowLeft, Zap, Star, Shield } from "lucide-react";
+import { Check, ArrowLeft, Zap, Star, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const G = "#39FF14";
