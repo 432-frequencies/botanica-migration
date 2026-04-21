@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS plant_discoveries (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_email        TEXT NOT NULL,
   category          TEXT NOT NULL DEFAULT 'plant'
-                      CHECK (category IN ('plant','bird','rock','fungus','tree','insect')),
+                      CHECK (category IN ('plant','bird','rock','fungus','tree','insect','arachnid')),
   is_cannabis       BOOLEAN NOT NULL DEFAULT false,
   strain_type       TEXT DEFAULT '',
   common_name       TEXT NOT NULL,
@@ -57,6 +57,11 @@ CREATE TABLE IF NOT EXISTS plant_discoveries (
                       CHECK (rarity IN ('commune','peu_commune','rare','legendaire')),
   is_edible         BOOLEAN NOT NULL DEFAULT false,
   is_toxic          BOOLEAN NOT NULL DEFAULT false,
+  observation_context TEXT NOT NULL DEFAULT 'unknown'
+                      CHECK (observation_context IN ('wild','domestic','unknown')),
+  edibility_status  TEXT NOT NULL DEFAULT 'unknown'
+                      CHECK (edibility_status IN ('edible','toxic','non_edible','unknown')),
+  safety_notes      TEXT,
   biome             TEXT NOT NULL DEFAULT 'inconnu'
                       CHECK (biome IN ('foret','prairie','montagne','bord_eau','urban','cote','inconnu')),
   description       TEXT,
@@ -143,10 +148,14 @@ CREATE TABLE IF NOT EXISTS leaderboard (
 
 ALTER TABLE leaderboard ENABLE ROW LEVEL SECURITY;
 
--- Lecture publique du leaderboard
-CREATE POLICY "leaderboard is public"
+-- Lecture réservée à l'utilisateur concerné.
+-- Le leaderboard public passe désormais par /api/leaderboard pour ne pas exposer les emails bruts.
+CREATE POLICY "users can read own leaderboard entry by user_id"
   ON leaderboard FOR SELECT
-  USING (true);
+  USING (
+    auth.uid() = user_id
+    OR lower(coalesce(auth.jwt() ->> 'email', '')) = lower(user_email)
+  );
 
 CREATE POLICY "users can upsert own leaderboard entry"
   ON leaderboard FOR INSERT
@@ -287,11 +296,14 @@ CREATE INDEX IF NOT EXISTS idx_ambassadors_code ON ambassadors(code) WHERE is_ac
 ALTER TABLE ambassadors ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Anyone can view active ambassadors"
-  ON ambassadors FOR SELECT TO authenticated
+  ON ambassadors FOR SELECT TO anon, authenticated
   USING (is_active = true);
 
 -- ─────────────────────────────────────────
 -- 11. AMBASSADOR_CONTRACTS
+-- Programme W1LD actuel:
+-- - commission fixe: 2 EUR par utilisateur Pro actif
+-- - durées standard: 2, 3, 6 ou 12 mois
 -- ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS ambassador_contracts (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -300,7 +312,7 @@ CREATE TABLE IF NOT EXISTS ambassador_contracts (
   valid_until        DATE,
   rate_type          TEXT NOT NULL CHECK (rate_type IN ('percentage', 'fixed')),
   rate_value         NUMERIC(10,2) NOT NULL,
-  grace_period_days  INTEGER NOT NULL DEFAULT 30,
+  grace_period_days  INTEGER NOT NULL DEFAULT 0,
   notes              TEXT,
   created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT valid_rate_value CHECK (rate_value > 0)

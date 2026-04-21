@@ -13,7 +13,7 @@ export default function ChallengeCard({ challenge, isPro }) {
           style={{ background: "rgba(242,237,228,0.92)", backdropFilter: "blur(4px)" }}
         >
           <Lock className="w-4 h-4 mb-1.5" style={{ color: "rgba(45,122,31,0.4)" }} />
-          <p className="text-[8px] font-black tracking-[0.4em] uppercase" style={{ color: "rgba(45,122,31,0.5)" }}>Elite Access Only</p>
+          <p className="text-[8px] font-black tracking-[0.4em] uppercase" style={{ color: "rgba(45,122,31,0.5)" }}>Indisponible dans cette version</p>
         </div>
       )}
 
@@ -26,13 +26,13 @@ export default function ChallengeCard({ challenge, isPro }) {
           )}
         </div>
         <p className="text-[9px] font-black tracking-widest flex-shrink-0" style={{ color: isDone ? "#2D7A1F" : "rgba(45,122,31,0.6)" }}>
-          {isDone ? "DONE" : `+${challenge.points_reward} XP`}
+          {isDone ? "TERMINE" : `+${challenge.points_reward} XP`}
         </p>
       </div>
 
       <div>
         <div className="flex justify-between text-[8px] tracking-[0.3em] uppercase mb-1.5" style={{ color: "rgba(45,122,31,0.55)" }}>
-          <span>Grind</span>
+          <span>Progression</span>
           <span>{challenge.current_count}/{challenge.target_count}</span>
         </div>
         <div className="h-px w-full" style={{ background: "rgba(45,122,31,0.15)" }}>

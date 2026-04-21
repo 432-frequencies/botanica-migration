@@ -4,28 +4,58 @@ import { identifyPlant } from "@/api/identifyPlant";
 import { saveDiscovery } from "@/api/saveDiscovery";
 import { uploadPhoto } from "@/api/uploadPhoto";
 import { createPageUrl } from "@/utils";
-import { Scan, Zap, Trophy, MapPin, ChevronRight } from "lucide-react";
+import { Scan, Zap, Trophy, MapPin, ChevronRight, Shield, CheckCircle2 } from "lucide-react";
 import CameraCapture from "@/components/identify/CameraCapture";
 
 const G = "var(--v1v-green)";
+const IS_DEV = import.meta.env.DEV;
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      resolve(result.split(",")[1] || "");
+    };
+    reader.onerror = () => reject(reader.error || new Error("Blob conversion failed"));
+    reader.readAsDataURL(blob);
+  });
+}
 
 const FEATURES = [
   {
     icon: Scan,
     title: "Scan",
-    text: "Pointe ton téléphone vers n'importe quelle espèce. L'IA identifie en 5 secondes.",
+    text: "Cadre un spécimen réel. W1LD prépare une première fiche claire à partir de ta photo.",
   },
   {
     icon: Zap,
-    title: "Collecte",
-    text: "Chaque découverte unique rapporte des XP et enrichit ton journal du vivant.",
+    title: "Journal",
+    text: "Chaque observation enrichit ton journal du vivant et garde une trace utile de ce que tu as rencontré.",
   },
   {
     icon: Trophy,
-    title: "Contribution",
-    text: "Documente les zones de 500m autour de toi et deviens un repère local du vivant.",
+    title: "Repères",
+    text: "Tes observations aident à mieux lire les zones autour de toi et à devenir un repère local crédible.",
   },
 ];
+
+function OnboardingPanel({ children, className = "", centered = false }) {
+  return (
+    <div className={`v1v-surface-card mx-auto w-full max-w-md px-5 py-6 ${centered ? "text-center" : ""} ${className}`.trim()}>
+      {children}
+    </div>
+  );
+}
+
+function OnboardingButton({ children, variant = "primary", className = "", ...props }) {
+  const baseClass = variant === "secondary" ? "v1v-button-secondary" : "v1v-button-primary";
+  return (
+    <button {...props} className={`${baseClass} w-full ${className}`.trim()}>
+      {children}
+    </button>
+  );
+}
 
 export default function Onboarding() {
   const [step, setStep] = useState(0);
@@ -33,6 +63,7 @@ export default function Onboarding() {
   const [showCamera, setShowCamera] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [scanError, setScanError] = useState(null);
+  const [scanNotice, setScanNotice] = useState(null);
   const [identifying, setIdentifying] = useState(false);
   const [geoCoords, setGeoCoords] = useState(null);
   const [geoStatus, setGeoStatus] = useState("unknown");
@@ -92,24 +123,36 @@ export default function Onboarding() {
     setStep(3);
   };
 
-  const handleCapture = async (imageBase64) => {
-    if (!imageBase64) {
+  const handleCapture = async (capturePayload) => {
+    const blob = capturePayload?.blob instanceof Blob ? capturePayload.blob : null;
+
+    if (!blob) {
       setScanError("Image vide. Réessaie.");
       return;
     }
     setShowCamera(false);
     setIdentifying(true);
     setScanError(null);
+    setScanNotice(null);
 
     // Step 1 — identifyPlant
     let res;
     try {
-      const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+      const cleanBase64 = await blobToBase64(blob);
       res = await identifyPlant({ imageBase64: cleanBase64 });
-      console.log("[SCAN][Onboarding] identifyPlant success", res?.top_result?.common_name);
+      if (IS_DEV) {
+        console.log("[SCAN][Onboarding] identifyPlant success", res?.top_result?.common_name);
+      }
     } catch (e) {
-      console.error("[SCAN][Onboarding] identifyPlant failed:", e?.message);
-      setScanError("Erreur réseau — réessaie.");
+      if (IS_DEV) {
+        console.error("[SCAN][Onboarding] identifyPlant failed:", e?.message);
+      }
+      const msg = (e?.message || "").toLowerCase();
+      if (msg.includes("unauthorized")) {
+        setScanError("Ta session a expiré. Reconnecte-toi puis relance ton premier scan.");
+      } else {
+        setScanError("Le scan n'a pas pu aboutir. Vérifie ta connexion et réessaie.");
+      }
       setIdentifying(false);
       return;
     }
@@ -122,12 +165,19 @@ export default function Onboarding() {
     const top = res.top_result;
 
     // Step 2 — Upload photo
-    const dataUri = imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
-    const photoUrl = await uploadPhoto(dataUri);
+    let photoUrl = "";
+    try {
+      photoUrl = await uploadPhoto(blob);
+    } catch (error) {
+      if (IS_DEV) {
+        console.error("[SCAN][Onboarding] uploadPhoto failed:", error?.message);
+      }
+    }
+    const photoUploadFailed = !photoUrl;
 
     // Step 3 — saveDiscovery
     try {
-      await saveDiscovery({
+      const saveRes = await saveDiscovery({
         category: res.category || "plant",
         common_name: top.common_name,
         scientific_name: top.scientific_name,
@@ -135,30 +185,51 @@ export default function Onboarding() {
         rarity: top.rarity,
         is_edible: top.is_edible,
         is_toxic: top.is_toxic,
+        edibility_status: top.edibility_status,
+        safety_notes: top.safety_notes,
         latitude: geoCoords?.lat,
         longitude: geoCoords?.lng,
         confidence: top.confidence,
       });
+      if (saveRes?.error) {
+        throw new Error(saveRes.error);
+      }
     } catch (e) {
-      console.error("[SCAN][Onboarding] saveDiscovery failed:", e?.message);
+      if (IS_DEV) {
+        console.error("[SCAN][Onboarding] saveDiscovery failed:", e?.message);
+      }
+      const msg = (e?.message || "").toLowerCase();
+      setScanError(msg.includes("unauthorized")
+        ? "Ta session a expiré. Reconnecte-toi puis réessaie."
+        : "L'observation n'a pas pu être enregistrée pour le moment. Réessaie.");
+      setIdentifying(false);
+      return;
     }
 
     setScanResult({
       commonName: top.common_name,
       rarity: top.rarity,
       xp: 10,
+      photoWarning: photoUploadFailed,
     });
+    if (photoUploadFailed) {
+      setScanNotice("L'observation a été enregistrée, mais la photo n'a pas encore pu être synchronisée.");
+    }
     setIdentifying(false);
   };
 
   const handleNextFromScan = () => {
     setStep(4);
     setScanResult(null);
+    setScanNotice(null);
+    setScanError(null);
   };
 
   const handleSkipScan = () => {
     setStep(4);
     setScanResult(null);
+    setScanNotice(null);
+    setScanError(null);
   };
 
   const handleComplete = async () => {
@@ -173,9 +244,13 @@ export default function Onboarding() {
           .eq('user_email', user.email);
       }
       res = { data: { success: true } };
-      console.log("[Onboarding] completeOnboarding success");
+      if (IS_DEV) {
+        console.log("[Onboarding] completeOnboarding success");
+      }
     } catch (e) {
-      console.error("[Onboarding] completeOnboarding failed:", e?.message, e);
+      if (IS_DEV) {
+        console.error("[Onboarding] completeOnboarding failed:", e?.message, e);
+      }
       setLoading(false);
       const msg = e?.message?.toLowerCase() || "";
       if (msg.includes("401") || msg.includes("unauthorized") || msg.includes("auth")) {
@@ -188,7 +263,9 @@ export default function Onboarding() {
       return;
     }
     if (res.data?.error) {
-      console.error("[Onboarding] completeOnboarding error payload:", res.data);
+      if (IS_DEV) {
+        console.error("[Onboarding] completeOnboarding error payload:", res.data);
+      }
       setLoading(false);
       setCompleteError(res.data.error === "Unauthorized"
         ? "Session expirée — reconnecte-toi pour continuer."
@@ -204,22 +281,22 @@ export default function Onboarding() {
     // Étape 0 — Accroche
     if (step === 0) {
       return (
-        <div className="flex flex-col items-center justify-center flex-1 text-center">
-          <h1
-            className="font-black uppercase mb-6"
-            style={{ fontSize: "56px", color: G, textShadow: `0 0 40px ${G}`, letterSpacing: "0.08em" }}
-          >
-            W1LD
-          </h1>
-          <h2 className="text-4xl font-black uppercase tracking-wider mb-6" style={{ color: "var(--v1v-fg)" }}>
-            La nature t'attend.
-          </h2>
-          <p
-            className="text-sm leading-relaxed max-w-sm"
-            style={{ color: "var(--v1v-fg-muted)" }}
-          >
-            Identifie chaque espèce que tu croises. Collectionne. Conquiers des zones. Protège le vivant.
-          </p>
+        <div className="flex flex-col items-center justify-center flex-1">
+          <OnboardingPanel centered>
+            <p className="v1v-page-kicker mb-3">Bienvenue</p>
+            <h1
+              className="font-black uppercase mb-5"
+              style={{ fontSize: "42px", color: G, letterSpacing: "0.08em" }}
+            >
+              W1LD
+            </h1>
+            <h2 className="text-[30px] font-black uppercase tracking-[0.08em] leading-tight mb-4" style={{ color: "var(--v1v-fg)" }}>
+              Observe le vivant autour de toi.
+            </h2>
+            <p className="text-[13px] leading-relaxed max-w-sm mx-auto" style={{ color: "var(--v1v-fg-muted)" }}>
+              W1LD t’aide à identifier, documenter et relire ce que tu rencontres sur le terrain avec une interface simple, calme et fiable.
+            </p>
+          </OnboardingPanel>
         </div>
       );
     }
@@ -228,10 +305,15 @@ export default function Onboarding() {
     if (step === 1) {
       return (
         <div className="flex flex-col items-center justify-center flex-1">
-          <h2 className="text-3xl font-black uppercase tracking-wider mb-12" style={{ color: "var(--v1v-fg)" }}>
-            Comment ça marche
-          </h2>
-          <div className="w-full max-w-sm space-y-6">
+          <OnboardingPanel>
+            <p className="v1v-page-kicker mb-3">Prise en main</p>
+            <h2 className="text-[28px] font-black uppercase tracking-[0.08em] leading-tight mb-3" style={{ color: "var(--v1v-fg)" }}>
+              Ce que tu vas faire ici
+            </h2>
+            <p className="text-[12px] leading-relaxed mb-6" style={{ color: "var(--v1v-fg-muted)" }}>
+              Trois gestes simples suffisent pour transformer une rencontre sur le terrain en note utile et durable.
+            </p>
+            <div className="space-y-4">
             {FEATURES.map((feat, i) => {
               const Icon = feat.icon;
               return (
@@ -243,13 +325,13 @@ export default function Onboarding() {
                     transform: visibleFeatures[i] ? "translateY(0)" : "translateY(8px)",
                   }}
                 >
-                  <div className="flex gap-4 items-start">
+                  <div className="v1v-surface-card-soft flex gap-4 items-start px-4 py-4">
                     <div
                       className="w-12 h-12 flex-shrink-0 flex items-center justify-center mt-0.5"
                       style={{
                         background: "rgba(46,168,15,0.1)",
                         border: "1px solid rgba(46,168,15,0.2)",
-                        borderRadius: "6px",
+                        borderRadius: "12px",
                       }}
                     >
                       <Icon className="w-6 h-6" style={{ color: G }} />
@@ -266,7 +348,8 @@ export default function Onboarding() {
                 </div>
               );
             })}
-          </div>
+            </div>
+          </OnboardingPanel>
         </div>
       );
     }
@@ -282,9 +365,10 @@ export default function Onboarding() {
                 "radial-gradient(circle at 30% 60%, rgba(46,168,15,0.4) 0%, transparent 40%), radial-gradient(circle at 70% 40%, rgba(46,168,15,0.3) 0%, transparent 50%)",
             }}
           />
-          <div className="relative z-10">
+          <OnboardingPanel centered className="relative z-10">
             <MapPin className="w-16 h-16 mx-auto mb-6" style={{ color: G }} />
-            <h2 className="text-3xl font-black uppercase tracking-wider mb-4 text-center" style={{ color: "var(--v1v-fg)" }}>
+            <p className="v1v-page-kicker mb-3">Zone locale</p>
+            <h2 className="text-[28px] font-black uppercase tracking-[0.08em] mb-4 text-center" style={{ color: "var(--v1v-fg)" }}>
               Où es-tu ?
             </h2>
             <p
@@ -295,38 +379,38 @@ export default function Onboarding() {
             </p>
 
             {geoStatus === "granted" && (
-              <div className="mb-6 text-center">
+              <div className="mb-6 text-center p-4" style={{ background: "rgba(46,168,15,0.08)", border: "1px solid rgba(46,168,15,0.2)", borderRadius: 14 }}>
                 <p className="text-sm font-black uppercase tracking-wider" style={{ color: G }}>
                   ✓ Localisation obtenue
+                </p>
+                <p className="text-[11px] mt-2" style={{ color: "var(--v1v-fg-muted)" }}>
+                  Parfait. Tu verras les repères et les zones liées à ce que tu observes.
+                </p>
+              </div>
+            )}
+
+            {geoStatus === "denied" && (
+              <div className="mb-6 text-center p-4" style={{ background: "rgba(232,122,0,0.08)", border: "1px solid rgba(232,122,0,0.22)", borderRadius: 14 }}>
+                <p className="text-sm font-black uppercase tracking-wider" style={{ color: "#E87A00" }}>
+                  Localisation refusée
+                </p>
+                <p className="text-[11px] mt-2" style={{ color: "var(--v1v-fg-muted)" }}>
+                  Tu peux continuer sans elle, mais les repères autour de toi resteront masqués jusqu'à autorisation.
                 </p>
               </div>
             )}
 
             <div className="w-full max-w-sm space-y-3">
               {geoStatus !== "granted" && (
-                <button
-                  onClick={handleRequestGeo}
-                  className="w-full py-4 text-sm font-black uppercase tracking-[0.3em] transition-all"
-                  style={{
-                    background: G,
-                    color: "var(--v1v-bg)",
-                  }}
-                >
+                <OnboardingButton onClick={handleRequestGeo}>
                   Autoriser la localisation
-                </button>
+                </OnboardingButton>
               )}
-              <button
-                onClick={handleSkipGeo}
-                className="w-full py-4 text-sm font-black uppercase tracking-[0.3em] transition-all"
-                style={{
-                  border: `1px solid rgba(46,168,15,0.3)`,
-                  color: G,
-                }}
-              >
+              <OnboardingButton onClick={handleSkipGeo} variant="secondary">
                 {geoStatus === "granted" ? "Continuer" : "Plus tard"}
-              </button>
+              </OnboardingButton>
             </div>
-          </div>
+          </OnboardingPanel>
         </div>
       );
     }
@@ -344,10 +428,15 @@ export default function Onboarding() {
       if (identifying) {
         return (
           <div className="flex flex-col items-center justify-center flex-1">
-            <div className="w-16 h-16 rounded-full border-2 animate-spin mb-6" style={{ borderColor: G, borderTopColor: "transparent" }} />
-            <p className="text-sm font-black uppercase tracking-widest" style={{ color: G }}>
-              Identification en cours...
+            <OnboardingPanel centered>
+            <div className="w-16 h-16 rounded-full border-2 animate-spin mb-6 mx-auto" style={{ borderColor: G, borderTopColor: "transparent" }} />
+            <p className="text-sm font-black uppercase tracking-[0.28em]" style={{ color: G }}>
+              Analyse de ton premier spécimen
             </p>
+            <p className="text-[11px] text-center mt-3 max-w-[260px]" style={{ color: "var(--v1v-fg-muted)" }}>
+              On vérifie les détails visibles et on prépare une première fiche fiable pour ton journal.
+            </p>
+            </OnboardingPanel>
           </div>
         );
       }
@@ -355,6 +444,7 @@ export default function Onboarding() {
       if (scanResult) {
         return (
           <div className="flex flex-col items-center justify-center flex-1 text-center">
+            <OnboardingPanel centered>
             <div
               className="w-20 h-20 flex items-center justify-center mb-6"
               style={{
@@ -377,52 +467,70 @@ export default function Onboarding() {
             <p className="text-sm mb-8" style={{ color: "var(--v1v-fg-muted)" }}>
               Ta première découverte est enregistrée.
             </p>
-            <button
-              onClick={handleNextFromScan}
-              className="w-full max-w-sm py-4 text-sm font-black uppercase tracking-[0.3em]"
-              style={{ background: G, color: "var(--v1v-bg)" }}
-            >
+            {(scanNotice || scanResult.photoWarning) && (
+              <div className="w-full max-w-sm mb-6 p-4 text-left" style={{ background: "rgba(232,122,0,0.08)", border: "1px solid rgba(232,122,0,0.22)", borderRadius: 14 }}>
+                <div className="flex items-start gap-3">
+                  <Shield className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: "#E87A00" }} />
+                  <p className="text-[11px] leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>
+                    {scanNotice}
+                  </p>
+                </div>
+              </div>
+            )}
+            <OnboardingButton onClick={handleNextFromScan} className="max-w-sm">
               Continuer
-            </button>
+            </OnboardingButton>
+            </OnboardingPanel>
           </div>
         );
       }
 
       return (
         <div className="flex flex-col items-center justify-center flex-1">
-          <h2 className="text-3xl font-black uppercase tracking-wider mb-4 text-center" style={{ color: "var(--v1v-fg)" }}>
+          <OnboardingPanel centered>
+          <p className="v1v-page-kicker mb-3">Premier scan</p>
+          <h2 className="text-[28px] font-black uppercase tracking-[0.08em] mb-4 text-center" style={{ color: "var(--v1v-fg)" }}>
             Ton premier scan
           </h2>
           <p
             className="text-sm leading-relaxed max-w-sm text-center mb-8"
             style={{ color: "var(--v1v-fg-muted)" }}
           >
-            Pointe vers n'importe quelle plante, arbre, oiseau, champignon ou roche dans ton environnement réel.
+            Choisis une photo claire d'une plante, d'un arbre, d'un oiseau, d'un champignon ou d'une roche rencontrés en conditions réelles.
           </p>
 
           {scanError && (
-            <p className="text-sm text-center mb-6" style={{ color: "rgba(208,48,48,0.7)" }}>
-              {scanError}
-            </p>
+            <div className="w-full max-w-sm mb-6 p-4 text-left" style={{ background: "rgba(208,48,48,0.08)", border: "1px solid rgba(208,48,48,0.22)", borderRadius: 14 }}>
+              <div className="flex items-start gap-3">
+                <Shield className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: "rgba(208,48,48,0.8)" }} />
+                <p className="text-[11px] leading-relaxed" style={{ color: "rgba(232,220,220,0.9)" }}>
+                  {scanError}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!scanError && (
+            <div className="w-full max-w-sm mb-6 p-4 text-left" style={{ background: "rgba(46,168,15,0.08)", border: "1px solid rgba(46,168,15,0.18)", borderRadius: 14 }}>
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: G }} />
+                <p className="text-[11px] leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>
+                  Essaie un sujet bien visible, net et centré. Plus la photo est claire, plus la fiche sera utile.
+                </p>
+              </div>
+            </div>
           )}
 
           <div className="w-full max-w-sm space-y-3">
-            <button
-              onClick={() => setShowCamera(true)}
-              className="w-full py-6 text-sm font-black uppercase tracking-[0.3em] transition-all"
-              style={{ background: G, color: "var(--v1v-bg)" }}
-            >
+            <OnboardingButton onClick={() => setShowCamera(true)} className="py-5">
               <Scan className="w-5 h-5 inline mr-2" />
               Lancer le scan
-            </button>
-            <button
-              onClick={handleSkipScan}
-              className="w-full py-4 text-sm font-black uppercase tracking-[0.3em]"
-              style={{ color: G, border: `1px solid rgba(46,168,15,0.3)` }}
-            >
+            </OnboardingButton>
+            <OnboardingButton onClick={handleSkipScan} variant="secondary">
               Passer cette étape
-            </button>
+            </OnboardingButton>
           </div>
+          </OnboardingPanel>
         </div>
       );
     }
@@ -432,7 +540,9 @@ export default function Onboarding() {
       const firstName = userDataRef.current?.full_name?.split(" ")[0] || "Explorateur";
       return (
         <div className="flex flex-col items-center justify-center flex-1 text-center">
-          <h2 className="text-3xl font-black uppercase tracking-wider mb-2" style={{ color: G }}>
+          <OnboardingPanel centered>
+          <p className="v1v-page-kicker mb-3">Prêt à entrer</p>
+          <h2 className="text-[28px] font-black uppercase tracking-[0.08em] mb-2" style={{ color: G }}>
             Bienvenue dans W1LD
           </h2>
           <p className="text-lg mb-8" style={{ color: "var(--v1v-fg)" }}>
@@ -465,22 +575,21 @@ export default function Onboarding() {
           </div>
 
           {completeError && (
-            <p className="text-sm text-center mb-4 px-2" style={{ color: "rgba(208,48,48,0.85)" }}>
-              {completeError}
-            </p>
+            <div className="w-full max-w-sm mb-4 p-4 text-left" style={{ background: "rgba(208,48,48,0.08)", border: "1px solid rgba(208,48,48,0.22)", borderRadius: 14 }}>
+              <p className="text-[11px] leading-relaxed" style={{ color: "rgba(232,220,220,0.9)" }}>
+                {completeError}
+              </p>
+            </div>
           )}
-          <button
+          <OnboardingButton
             onClick={handleComplete}
             disabled={loading}
-            className="w-full max-w-sm py-5 text-sm font-black uppercase tracking-[0.3em] transition-all"
-            style={{
-              background: G,
-              color: "var(--v1v-bg)",
-              opacity: loading ? 0.6 : 1,
-            }}
+            className="max-w-sm"
+            style={{ opacity: loading ? 0.6 : 1 }}
           >
             {loading ? "Chargement..." : "Entrer dans le terrain"}
-          </button>
+          </OnboardingButton>
+          </OnboardingPanel>
         </div>
       );
     }

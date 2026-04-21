@@ -1,7 +1,20 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/api/supabaseClient';
+import { resolveDisplayName } from '@/lib/displayName';
 
 const AuthContext = createContext();
+
+function buildAuthUser(sessionUser) {
+  if (!sessionUser) return null;
+  return {
+    email: sessionUser.email,
+    full_name: resolveDisplayName({
+      fullName: sessionUser.user_metadata?.full_name,
+      email: sessionUser.email,
+    }),
+    id: sessionUser.id,
+  };
+}
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -9,52 +22,45 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        setUser({
-          email: session.user.email,
-          full_name: session.user.user_metadata?.full_name || session.user.email.split('@')[0],
-          id: session.user.id,
-        });
-        setIsAuthenticated(true);
-      } else if (import.meta.env.DEV) {
-        // DEV ONLY — auto-login temporaire, à supprimer avant prod
-        const { data } = await supabase.auth.signInWithPassword({
-          email: 'test@test.com',
-          password: 'test1234',
-        });
-        if (data?.user) {
-          setUser({
-            email: data.user.email,
-            full_name: data.user.user_metadata?.full_name || data.user.email.split('@')[0],
-            id: data.user.id,
-          });
-          setIsAuthenticated(true);
-        }
-      }
+    let mounted = true;
+
+    const applySession = (session) => {
+      if (!mounted) return;
+
+      const nextUser = buildAuthUser(session?.user);
+      setUser(nextUser);
+      setIsAuthenticated(Boolean(nextUser));
       setIsLoadingAuth(false);
-    });
+    };
+
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        applySession(session);
+      })
+      .catch(() => {
+        applySession(null);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser({
-          email: session.user.email,
-          full_name: session.user.user_metadata?.full_name || session.user.email.split('@')[0],
-          id: session.user.id,
-        });
-        setIsAuthenticated(true);
-      } else {
-        setUser(null);
-        setIsAuthenticated(false);
-      }
+      applySession(session);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const logout = async (redirectUrl) => {
-    await supabase.auth.signOut();
-    window.location.href = redirectUrl || '/login';
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      setUser(null);
+      setIsAuthenticated(false);
+      setIsLoadingAuth(false);
+    } finally {
+      window.location.replace(redirectUrl || '/login');
+    }
   };
 
   const navigateToLogin = () => {

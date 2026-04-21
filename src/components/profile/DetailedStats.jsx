@@ -3,20 +3,16 @@ import { fr } from "date-fns/locale";
 
 const G = "var(--v1v-green)";
 const GDB = "var(--v1v-green-bg)";
-const GOLD = "#C8960A";
-const BLUE = "#507ACC";
 
 const CAT_LABEL = {
   plant: "Plantes", bird: "Oiseaux", rock: "Minéraux",
-  fungus: "Champignons", tree: "Arbres", insect: "Insectes",
+  fungus: "Champignons", tree: "Arbres", insect: "Insectes", arachnid: "Araignées",
 };
 
 const CAT_EMOJI = {
   plant: "🌿", bird: "🐦", rock: "🪨",
-  fungus: "🍄", tree: "🌳", insect: "🦋",
+  fungus: "🍄", tree: "🌳", insect: "🦋", arachnid: "🕷️",
 };
-
-const DAYS_FR = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 
 function computeStreak(discoveries) {
   if (!discoveries.length) return 0;
@@ -66,14 +62,6 @@ export default function DetailedStats({ discoveries }) {
   const maxCat = catEntries[0]?.[1] || 1;
 
   // Best day of week
-  const dayCounts = Array(7).fill(0);
-  for (const d of discoveries) {
-    const dateStr = d.discovered_date || d.created_date?.split("T")[0];
-    if (dateStr) dayCounts[new Date(dateStr).getDay()]++;
-  }
-  const bestDayIdx = dayCounts.indexOf(Math.max(...dayCounts));
-  const bestDay = DAYS_FR[bestDayIdx];
-
   // Most scanned species
   const speciesCount = {};
   for (const d of discoveries) {
@@ -89,8 +77,6 @@ export default function DetailedStats({ discoveries }) {
   const firstDate = sorted[0]?.discovered_date || sorted[0]?.created_date?.split("T")[0];
 
   // Last discovery
-  const lastDate = sorted[sorted.length - 1]?.discovered_date || sorted[sorted.length - 1]?.created_date?.split("T")[0];
-
   // Streak
   const streak = computeStreak(discoveries);
 

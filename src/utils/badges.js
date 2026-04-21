@@ -1,5 +1,6 @@
 // ─── Badge Definitions — Naturaliste System ────────────────────────────────
 // Each badge has: id, name, description, icon, category, condition(stats)
+import { normalizeSpeciesCategory } from "@/lib/species";
 
 export const BADGE_CATEGORIES = {
   biome:      { label: "Biomes",       color: "#39B814" },
@@ -80,12 +81,16 @@ export const BADGES = [
   {
     id: "plant_10",       category: "category", icon: "🌿",
     name: "Botaniste",    description: "10 plantes identifiées",
-    condition: s => (s.byCategory.plant || 0) >= 10, target: 10, progress: s => Math.min(s.byCategory.plant || 0, 10),
+    condition: s => ((s.byCategory.plant || 0) + (s.byCategory.tree || 0)) >= 10,
+    target: 10,
+    progress: s => Math.min((s.byCategory.plant || 0) + (s.byCategory.tree || 0), 10),
   },
   {
     id: "plant_25",       category: "category", icon: "🌺",
     name: "Phytologue",   description: "25 plantes identifiées",
-    condition: s => (s.byCategory.plant || 0) >= 25, target: 25, progress: s => Math.min(s.byCategory.plant || 0, 25),
+    condition: s => ((s.byCategory.plant || 0) + (s.byCategory.tree || 0)) >= 25,
+    target: 25,
+    progress: s => Math.min((s.byCategory.plant || 0) + (s.byCategory.tree || 0), 25),
   },
   {
     id: "fungus_5",       category: "category", icon: "🍄",
@@ -162,8 +167,9 @@ export function computeStats(discoveries, userProfile, seasonStart = null) {
   const byCategory  = {};
 
   for (const d of discoveries) {
-    if (d.biome)    byBiome[d.biome]        = (byBiome[d.biome] || 0) + 1;
-    if (d.category) byCategory[d.category]  = (byCategory[d.category] || 0) + 1;
+    const category = normalizeSpeciesCategory(d.category, d);
+    if (d.biome) byBiome[d.biome] = (byBiome[d.biome] || 0) + 1;
+    byCategory[category] = (byCategory[category] || 0) + 1;
   }
 
   // Seasonal unique species

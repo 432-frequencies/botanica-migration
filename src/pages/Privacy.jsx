@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { APP_NAME, APP_TAGLINE, REVIEW_EMAIL, SUPPORT_EMAIL } from "@/lib/app-config";
+import { APP_NAME, APP_TAGLINE, SUPPORT_EMAIL } from "@/lib/app-config";
 import { ArrowLeft, Lock, Mail, MapPinned, Shield, Trash2 } from "lucide-react";
 
 const SECTIONS = [
@@ -8,7 +8,7 @@ const SECTIONS = [
     icon: Shield,
     items: [
       "Compte: email, profil public, progression, XP et badges.",
-      "Découvertes: photos, espèces identifiées, date et position si tu actives la géolocalisation.",
+      "Découvertes: photos prises ou choisies pour un scan, espèces identifiées, date et position si tu actives la géolocalisation.",
       "Usage: statistiques de scan, zones documentées et activité de saison.",
     ],
   },
@@ -27,6 +27,7 @@ const SECTIONS = [
     items: [
       "Tes données sont hébergées chez nos prestataires techniques sécurisés.",
       "Les photos envoyées pour identification peuvent être traitées par nos services IA et d'identification partenaires.",
+      "Cette version n'accède pas à ton carnet d'adresses.",
       "Nous ne vendons pas tes données personnelles.",
     ],
   },
@@ -36,7 +37,7 @@ const SECTIONS = [
     items: [
       "Tu peux supprimer ton compte directement depuis l'écran Profil.",
       `Tu peux aussi écrire à ${SUPPORT_EMAIL} pour toute demande liée à tes données.`,
-      `Pour la revue App Store ou un accès urgent: ${REVIEW_EMAIL}.`,
+      "Si une suppression échoue, le support peut t'accompagner et confirmer sa bonne prise en compte.",
     ],
   },
 ];
@@ -47,7 +48,7 @@ export default function Privacy() {
       <div className="pointer-events-none fixed inset-0 z-0" style={{ background: "radial-gradient(ellipse 60% 45% at 50% 0%, rgba(57,184,20,0.08) 0%, transparent 70%)" }} />
 
       <div className="relative z-10 mx-auto max-w-md px-5 pt-8 pb-12">
-        <Link to="/login" className="inline-flex items-center gap-2 min-h-[44px] text-xs font-black uppercase tracking-[0.2em]" style={{ color: "var(--v1v-fg-faint)" }}>
+        <Link to="/" className="inline-flex items-center gap-2 min-h-[44px] text-xs font-black uppercase tracking-[0.2em]" style={{ color: "var(--v1v-fg-faint)" }}>
           <ArrowLeft className="w-4 h-4" />
           Retour
         </Link>

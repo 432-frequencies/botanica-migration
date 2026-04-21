@@ -1,13 +1,11 @@
 import { Zap } from "lucide-react";
-import { Link } from "react-router-dom";
-import { createPageUrl } from "@/utils";
 
 export default function DailyLimitBar({ dailyCount, isPro }) {
   if (isPro) return (
     <div className="flex items-center gap-3 px-4 py-3" style={{ border: "1px solid rgba(45,122,31,0.2)" }}>
       <Zap className="w-3 h-3" style={{ color: "#2D7A1F" }} />
       <p className="text-[9px] font-black tracking-[0.4em] uppercase" style={{ color: "#2D7A1F" }}>
-        Accès illimité — Clearance Elite
+        Accès complet — version lancement
       </p>
     </div>
   );
@@ -40,20 +38,18 @@ export default function DailyLimitBar({ dailyCount, isPro }) {
           ⚡ QUOTA ÉPUISÉ
         </p>
         <p className="text-[8px] mb-2.5" style={{ color: "rgba(200,150,10,0.7)" }}>
-          Passe Elite — scans illimités + intel complet
+          Reviens un peu plus tard pour relancer les scans du jour
         </p>
-        <Link to={createPageUrl("Pricing")}>
-          <button
-            className="w-full font-black uppercase tracking-[0.3em] text-[9px] transition-all active:opacity-80"
-            style={{
-              background: "#C8960A",
-              color: "#000",
-              minHeight: "44px",
-            }}
-          >
-            → DÉBLOQUER MAINTENANT
-          </button>
-        </Link>
+        <div
+          className="w-full font-black uppercase tracking-[0.3em] text-[9px] flex items-center justify-center"
+          style={{
+            background: "#C8960A",
+            color: "#000",
+            minHeight: "44px",
+          }}
+        >
+          Pause terrain
+        </div>
       </div>
     );
   }

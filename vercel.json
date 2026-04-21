@@ -1,8 +1,54 @@
 {
   "functions": {
+    "api/nearby-spots.js": {
+      "maxDuration": 20
+    },
     "api/stripe-webhook.js": {
       "memory": 1024,
       "maxDuration": 10
     }
-  }
+  },
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/((?!api/|.*\\..*).*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/privacy.html",
+      "destination": "/privacy"
+    },
+    {
+      "source": "/support.html",
+      "destination": "/support"
+    },
+    {
+      "source": "/((?!api/|.*\\..*).*)",
+      "destination": "/index.html"
+    }
+  ]
 }

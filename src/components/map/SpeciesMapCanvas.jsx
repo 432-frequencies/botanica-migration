@@ -41,16 +41,20 @@ export default function SpeciesMapCanvas({
   style,
 }) {
   const canvasRef = useRef(null);
+  const hitTargetsRef = useRef([]);
+  const drawFrameRef = useRef(null);
+  const hoverFrameRef = useRef(null);
   const [hoveredSpecies, setHoveredSpecies] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const animationFrameRef = useRef(null);
+  const hoveredSpeciesRef = useRef(null);
+
+  useEffect(() => {
+    hoveredSpeciesRef.current = hoveredSpecies;
+  }, [hoveredSpecies]);
 
   // Conversion lat/lng vers pixels canvas
-  const latLngToPixel = (lat, lng) => {
-    if (!canvasRef.current) return { x: 0, y: 0 };
-    const canvas = canvasRef.current;
-    const width = canvas.width;
-    const height = canvas.height;
+  const latLngToPixel = (lat, lng, width, height) => {
+    if (lat == null || lng == null) return { x: 0, y: 0 };
 
     // Projection Mercator simplifiée
     const scale = Math.pow(2, zoomLevel);
@@ -72,11 +76,11 @@ export default function SpeciesMapCanvas({
   };
 
   // Dessiner une espèce
-  const drawSpecies = (ctx, species, isReference = true) => {
-    const { x, y } = latLngToPixel(species.latitude, species.longitude);
+  const drawSpecies = (ctx, species, width, height, isReference = true) => {
+    const { x, y } = latLngToPixel(species.latitude, species.longitude, width, height);
 
     // Hors écran
-    if (x < -50 || x > ctx.canvas.width + 50 || y < -50 || y > ctx.canvas.height + 50) {
+    if (x < -50 || x > width + 50 || y < -50 || y > height + 50) {
       return;
     }
 
@@ -124,125 +128,152 @@ export default function SpeciesMapCanvas({
     return { x, y, radius: size, species, isReference };
   };
 
-  // Render loop
-  const render = () => {
+  const scheduleDraw = () => {
+    if (drawFrameRef.current) return;
+    drawFrameRef.current = requestAnimationFrame(() => {
+      drawFrameRef.current = null;
+      draw();
+    });
+  };
+
+  // Render pass
+  const draw = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
-    // Clear
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const targetWidth = Math.max(1, Math.round(rect.width * dpr));
+    const targetHeight = Math.max(1, Math.round(rect.height * dpr));
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+    }
+
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // Clear
+    ctx.clearRect(0, 0, rect.width, rect.height);
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, rect.height);
     gradient.addColorStop(0, '#121612');
     gradient.addColorStop(0.55, '#101510');
     gradient.addColorStop(1, '#0d110d');
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, rect.width, rect.height);
 
     const radial = ctx.createRadialGradient(
-      canvas.width * 0.5,
-      canvas.height * 0.4,
+      rect.width * 0.5,
+      rect.height * 0.4,
       0,
-      canvas.width * 0.5,
-      canvas.height * 0.4,
-      canvas.width * 0.6,
+      rect.width * 0.5,
+      rect.height * 0.4,
+      rect.width * 0.6,
     );
     radial.addColorStop(0, 'rgba(125,160,90,0.06)');
     radial.addColorStop(1, 'rgba(125,160,90,0)');
     ctx.fillStyle = radial;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, rect.width, rect.height);
 
     ctx.strokeStyle = 'rgba(125,160,90,0.1)';
     ctx.lineWidth = 1;
     const gridSize = 50;
-    for (let x = 0; x < canvas.width; x += gridSize) {
+    for (let x = 0; x < rect.width; x += gridSize) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
+      ctx.lineTo(x, rect.height);
       ctx.stroke();
     }
-    for (let y = 0; y < canvas.height; y += gridSize) {
+    for (let y = 0; y < rect.height; y += gridSize) {
       ctx.beginPath();
       ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
+      ctx.lineTo(rect.width, y);
       ctx.stroke();
     }
 
     // Dessiner les espèces de référence (base)
     const drawn = [];
     referenceSpecies.forEach(species => {
-      const result = drawSpecies(ctx, species, true);
+      const result = drawSpecies(ctx, species, rect.width, rect.height, true);
       if (result) drawn.push(result);
     });
 
     // Dessiner les découvertes utilisateurs
     userDiscoveries.forEach(discovery => {
-      const result = drawSpecies(ctx, discovery, false);
+      const result = drawSpecies(ctx, discovery, rect.width, rect.height, false);
       if (result) drawn.push(result);
     });
 
     // Stocker pour hit detection
-    canvasRef.current._hitTargets = drawn;
-
-    animationFrameRef.current = requestAnimationFrame(render);
+    hitTargetsRef.current = drawn;
   };
 
   // Mouse move handler
   const handleMouseMove = (e) => {
     const canvas = canvasRef.current;
-    if (!canvas || !canvas._hitTargets) return;
+    if (!canvas) return;
+    const pointerX = e.clientX;
+    const pointerY = e.clientY;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    setMousePos({ x: e.clientX, y: e.clientY });
-
-    // Détection collision
-    let found = null;
-    for (const target of canvas._hitTargets) {
-      const dx = x - target.x;
-      const dy = y - target.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      if (distance <= target.radius + 4) {
-        found = target.species;
-        break;
-      }
+    if (hoverFrameRef.current) {
+      cancelAnimationFrame(hoverFrameRef.current);
     }
 
-    setHoveredSpecies(found);
-    canvas.style.cursor = found ? 'pointer' : 'default';
+    hoverFrameRef.current = requestAnimationFrame(() => {
+      hoverFrameRef.current = null;
+      const rect = canvas.getBoundingClientRect();
+      const x = pointerX - rect.left;
+      const y = pointerY - rect.top;
+
+      let found = null;
+      for (const target of hitTargetsRef.current) {
+        const dx = x - target.x;
+        const dy = y - target.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance <= target.radius + 4) {
+          found = target.species;
+          break;
+        }
+      }
+
+      const previousId = hoveredSpeciesRef.current?.id || null;
+      const nextId = found?.id || null;
+      if (previousId !== nextId) {
+        setHoveredSpecies(found);
+      }
+      setMousePos({ x: pointerX, y: pointerY });
+      canvas.style.cursor = found ? 'pointer' : 'default';
+    });
   };
 
   // Click handler
   const handleClick = () => {
-    if (hoveredSpecies && onSpeciesClick) {
-      onSpeciesClick(hoveredSpecies);
+    if (hoveredSpeciesRef.current && onSpeciesClick) {
+      onSpeciesClick(hoveredSpeciesRef.current);
     }
   };
 
-  // Setup canvas
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    scheduleDraw();
+  }, [referenceSpecies, userDiscoveries, centerLat, centerLng, zoomLevel, hoveredSpecies]);
 
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-
-    const ctx = canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
-
-    render();
-
+  useEffect(() => {
+    const handleResize = () => scheduleDraw();
+    window.addEventListener('resize', handleResize);
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+      window.removeEventListener('resize', handleResize);
+      if (drawFrameRef.current) {
+        cancelAnimationFrame(drawFrameRef.current);
+        drawFrameRef.current = null;
+      }
+      if (hoverFrameRef.current) {
+        cancelAnimationFrame(hoverFrameRef.current);
+        hoverFrameRef.current = null;
       }
     };
-  }, [referenceSpecies, userDiscoveries, centerLat, centerLng, zoomLevel, hoveredSpecies]);
+  }, []);
 
   return (
     <div className="relative" style={style}>
@@ -251,6 +282,10 @@ export default function SpeciesMapCanvas({
         className={className}
         style={{ width: '100%', height: '100%' }}
         onMouseMove={handleMouseMove}
+        onMouseLeave={() => {
+          setHoveredSpecies(null);
+          scheduleDraw();
+        }}
         onClick={handleClick}
       />
 

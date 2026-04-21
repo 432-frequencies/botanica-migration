@@ -18,7 +18,16 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+build
+DerivedData
 *.local
+*.zip
+botanica-quest-go*.zip
+botanica-migration-*-current-state*/
+botanica-migration-*-current-state-clean*/
+supabase/.temp/
+*.xcarchive
+*.xcresult
 
 # Editor directories and files
 .vscode/*
@@ -34,3 +43,6 @@ dist-ssr
 .env
 .vercel
 .env*.local
+
+# Local legacy/native experiments kept out of release handoff
+W1LD/

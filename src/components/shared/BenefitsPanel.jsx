@@ -3,16 +3,10 @@ import { Sparkles, Loader, ChevronDown } from "lucide-react";
 
 const G = "#2D7A1F";
 
-const CAT_LABEL = {
-  plant: "plante", tree: "arbre", bird: "oiseau", rock: "minéral", fungus: "champignon"
-};
-
-export default function BenefitsPanel({ species, isOpen = false }) {
+export default function BenefitsPanel({ species: _species, isOpen = false }) {
   const [benefits, setBenefits] = useState(null);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(isOpen);
-
-  const catLabel = CAT_LABEL[species?.category] || "espèce";
 
   const handleFetch = async () => {
     if (benefits) { setOpen(!open); return; }

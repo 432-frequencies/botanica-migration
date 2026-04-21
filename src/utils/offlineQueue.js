@@ -2,10 +2,17 @@ const DB_NAME = 'w1ld_offline';
 const STORE = 'pending_photos';
 export const QUEUE_LIMIT_PRO = 50;
 export const QUEUE_LIMIT_FREE = 5;
+export const OFFLINE_QUEUE_EVENT = 'w1ld-offline-queue-change';
 
 // Fallback en mémoire si IndexedDB est indisponible (navigation privée iOS, etc.)
 let memoryQueue = [];
 let useMemoryFallback = false;
+
+function emitQueueChange() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(OFFLINE_QUEUE_EVENT));
+  }
+}
 
 function testIndexedDB() {
   return new Promise((resolve) => {
@@ -67,15 +74,20 @@ export async function addToQueue(imageBase64, coords, isPro = false) {
 
   if (!db) {
     memoryQueue.push(item);
+    emitQueueChange();
     return;
   }
 
   const tx = db.transaction(STORE, 'readwrite');
   tx.objectStore(STORE).add(item);
   return new Promise((res) => {
-    tx.oncomplete = res;
+    tx.oncomplete = () => {
+      emitQueueChange();
+      res();
+    };
     tx.onerror = () => {
       memoryQueue.push(item);
+      emitQueueChange();
       res();
     };
   });
@@ -99,6 +111,7 @@ export async function updateQueueItem(id, updates) {
   const db = await openDB();
   if (!db) {
     memoryQueue = memoryQueue.map(i => i.id === id ? { ...i, ...updates } : i);
+    emitQueueChange();
     return;
   }
   const tx = db.transaction(STORE, 'readwrite');
@@ -108,9 +121,13 @@ export async function updateQueueItem(id, updates) {
     if (req.result) store.put({ ...req.result, ...updates });
   };
   return new Promise((res) => {
-    tx.oncomplete = res;
+    tx.oncomplete = () => {
+      emitQueueChange();
+      res();
+    };
     tx.onerror = () => {
       memoryQueue = memoryQueue.map(i => i.id === id ? { ...i, ...updates } : i);
+      emitQueueChange();
       res();
     };
   });
@@ -120,14 +137,19 @@ export async function removeFromQueue(id) {
   const db = await openDB();
   if (!db) {
     memoryQueue = memoryQueue.filter(i => i.id !== id);
+    emitQueueChange();
     return;
   }
   const tx = db.transaction(STORE, 'readwrite');
   tx.objectStore(STORE).delete(id);
   return new Promise((res) => {
-    tx.oncomplete = res;
+    tx.oncomplete = () => {
+      emitQueueChange();
+      res();
+    };
     tx.onerror = () => {
       memoryQueue = memoryQueue.filter(i => i.id !== id);
+      emitQueueChange();
       res();
     };
   });
@@ -136,6 +158,40 @@ export async function removeFromQueue(id) {
 export async function getQueueCount() {
   const items = await getPendingQueue();
   return items.length;
+}
+
+export async function getQueueSummary() {
+  const items = await getPendingQueue();
+  const summary = {
+    total: items.length,
+    pending: 0,
+    processing: 0,
+    error: 0,
+    storageMode: getStorageMode(),
+  };
+
+  items.forEach((item) => {
+    const status = item?.status || 'pending';
+    if (status === 'error') summary.error += 1;
+    else if (status === 'processing') summary.processing += 1;
+    else summary.pending += 1;
+  });
+
+  return summary;
+}
+
+export async function retryErroredQueueItems() {
+  const items = await getPendingQueue();
+  const errored = items.filter((item) => item?.status === 'error');
+  await Promise.all(
+    errored.map((item) => updateQueueItem(item.id, {
+      status: 'pending',
+      attempts: 0,
+      last_error: null,
+      last_attempt_at: null,
+    }))
+  );
+  return errored.length;
 }
 
 // 'indexeddb' = stockage persistant, 'memory' = fallback volatile (Safari privé, etc.)

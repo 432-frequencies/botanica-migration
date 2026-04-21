@@ -1,255 +1,111 @@
-# 🌿 Botanica - W1LD
+# W1LD
 
-Application mobile d'identification de plantes, arbres, champignons, oiseaux, insectes et roches avec IA.
+Mobile-first React/Vite app for documenting local biodiversity, wrapped for iOS with Capacitor.
 
-## 🚀 Stack Technique
+## Product Scope
 
-- **Frontend** : React + Vite
-- **Backend** : Vercel Serverless Functions
-- **Database** : Supabase (Postgres)
-- **Storage** : Supabase Storage
-- **Auth** : Supabase Auth
-- **AI** : Google Gemini (gemini-1.5-flash)
-- **Data enrichment** : iNaturalist API
+W1LD lets users scan living species, save observations, explore local references, and build a territorial record of the living world around them.
 
-## ✅ Migration Status
+Current focus:
+- Home / Feed: scan entry point, local opportunity, user progress, local impact, nearby referenced species.
+- Scan flow: camera capture, AI identification, safety context, observation context, save to Supabase.
+- Journal: saved discoveries and species details.
+- Zones: local territory map plus atlas direction.
+- Ranks / Friends / Profile: progression, social layer, and subscription surfaces.
 
-**La migration vers Supabase est 100% terminée.**
+## Stack
 
-Voir [`MIGRATION_COMPLETE.md`](./MIGRATION_COMPLETE.md) pour les détails.
+- Frontend: React 18, Vite, Tailwind CSS
+- Hosting: Vercel
+- Database/Auth/Storage: Supabase
+- Native iOS wrapper: Capacitor
+- AI identification: Vercel Functions + Gemini
+- Purchases: RevenueCat Capacitor packages
 
-## 📦 Installation
-
-### 1. Clone le repo
-
-```bash
-git clone https://github.com/432-frequencies/botanica-migration.git
-cd botanica-migration
-```
-
-### 2. Install dependencies
+## Key Commands
 
 ```bash
 npm install
-```
-
-### 3. Configuration des variables d'environnement
-
-Créer un fichier `.env.local` :
-
-```env
-GEMINI_API_KEY=your_gemini_api_key
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your_anon_key
-```
-
-### 4. Configuration Supabase
-
-**📖 Lire et suivre [`SETUP_SUPABASE.md`](./SETUP_SUPABASE.md)**
-
-Ce fichier contient :
-- Création des tables SQL
-- Configuration du bucket Storage
-- Policies RLS
-- Checklist complète
-
-### 5. Lancer l'app en local
-
-```bash
 npm run dev
+npm run build
+npm run preview
+npm run ios:sync
+npm run ios:open
+vercel --prod --yes --force
 ```
 
-L'app sera disponible sur `http://localhost:5173`
+## Project Structure
 
-## 📱 Features
-
-### MVP (implémenté)
-
-✅ **Authentification**
-- Signup/Login avec email + mot de passe
-- Session persistante
-- Logout
-
-✅ **Onboarding**
-- 5 étapes guidées
-- Premier scan optionnel
-- Géolocalisation optionnelle
-
-✅ **Identification IA**
-- Scan photo avec caméra
-- Identification via Gemini
-- 6 catégories : plant, tree, fungus, bird, insect, rock
-- Détection de rareté, toxicité, comestibilité
-
-✅ **Collection**
-- Historique des scans
-- Système d'XP et de niveaux
-- Points par découverte
-
-✅ **Profil**
-- Stats personnelles
-- Niveau et progression
-- Liste des découvertes
-
-### En développement
-
-🚧 **iNaturalist Integration**
-- Photos réelles des espèces
-- Observations géolocalisées
-- API prête, UI à intégrer
-
-🚧 **Leaderboard**
-- Classement global
-- Zones territoriales
-- Table créée, UI à faire
-
-🚧 **Challenges hebdomadaires**
-- Défis communautaires
-- Table créée, logic à implémenter
-
-🚧 **Badges & Achievements**
-- Système de déblocage
-- Table créée, UI à faire
-
-## 🗂️ Structure du projet
-
-```
-botanica-migration/
-├── api/                      # Vercel Serverless Functions
-│   ├── identify-plant.js     # Identification Gemini
-│   └── inaturalist.js        # iNaturalist API
-├── src/
-│   ├── api/                  # API clients
-│   │   ├── identifyPlant.js
-│   │   ├── saveDiscovery.js
-│   │   ├── uploadPhoto.js
-│   │   ├── getUserProfile.js
-│   │   └── inaturalist.js
-│   ├── lib/
-│   │   ├── AuthContext.jsx   # Supabase Auth
-│   │   └── supabaseClient.js
-│   ├── pages/
-│   │   ├── Login.jsx
-│   │   ├── Onboarding.jsx
-│   │   ├── Home.jsx
-│   │   └── Profile.jsx
-│   └── components/
-├── supabase_schema.sql       # Tables principales
-├── supabase_missing_tables.sql
-├── SETUP_SUPABASE.md         # Guide de configuration
-├── MIGRATION_COMPLETE.md     # Détails de la migration
-├── INATURALIST_USAGE.md      # Guide iNaturalist
-└── README.md                 # Ce fichier
+```text
+api/                  Vercel serverless functions
+src/api/              Supabase and app data access helpers
+src/components/       Shared React components
+src/components/map/   Zones and atlas UI components
+src/lib/              Auth, navigation, app-level utilities
+src/pages/            Route-level screens
+supabase/             Schema, migrations, diagnostics, release SQL
+ios/App/              Capacitor iOS project used for Xcode/TestFlight
+public/               Web assets copied into builds
+docs/                 Release and handoff documentation
 ```
 
-## 🧪 Tests
+## Environment
 
-### Parcours utilisateur complet
+Required runtime variables:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `GEMINI_API_KEY`
+- `PLANTID_API_KEY`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_PUBLISHABLE_KEY`
+- `STRIPE_PRICE_ID_PRO`
 
-1. Aller sur `/login`
-2. Créer un compte
-3. Compléter l'onboarding
-4. Scanner une plante
-5. Voir le résultat
-6. Aller sur `/profile`
-7. Vérifier que la découverte est sauvegardée
+Native subscription testing also needs RevenueCat/App Store configuration:
+- `VITE_REVENUECAT_APPLE_API_KEY`
+- `REVENUECAT_SECRET_API_KEY`
+- `REVENUECAT_ENTITLEMENT_ID`
 
-### Test iNaturalist
+Do not commit `.env`, `.env.local`, archives, `dist`, `build`, or Xcode DerivedData.
 
-```javascript
-import { searchTaxon, getTaxonPhotos } from '@/api/inaturalist';
+## iOS Release Path
 
-const taxon = await searchTaxon('Quercus robur');
-const photos = await getTaxonPhotos(taxon.taxon.id, 6);
-console.log(photos);
+The iOS project is:
+
+```text
+ios/App/App.xcodeproj
 ```
 
-## 📊 Rate Limits
+Before TestFlight:
+1. Run `npm run build`.
+2. Run `npm run ios:sync`.
+3. Open `ios/App/App.xcodeproj`.
+4. Select the Apple Developer Team in Signing & Capabilities.
+5. Use Product > Clean Build Folder.
+6. Build on simulator or a connected iPhone.
+7. Archive and upload to App Store Connect / TestFlight.
 
-### Gemini API
-- Selon votre quota Google Cloud
-- Modèle utilisé : `gemini-1.5-flash`
+See [iOS handoff](docs/IOS_HANDOFF.md) for the detailed checklist.
 
-### iNaturalist API
-- Max 60 requêtes/minute
-- Max 10 000 requêtes/jour
-- API publique (gratuite)
+## Supabase
 
-### Supabase Free Tier
-- 500 MB database
-- 1 GB storage
-- 2 GB bandwidth/mois
+Release-critical migrations live in:
 
-## 🚢 Déploiement
+```text
+supabase/migrations/
+supabase/release/
+```
 
-### Vercel (recommandé)
+Before a TestFlight meant for real testing, confirm at minimum:
+- `20260416_observation_context.sql`
+- `20260417_edibility_status.sql`
+- `20260417_arachnid_category.sql`
+- `20260417_ios_testflight_readiness.sql`
 
-1. Pusher le code sur GitHub
-2. Connecter le repo à Vercel
-3. Configurer les variables d'environnement :
-   - `GEMINI_API_KEY`
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-4. Deploy !
+## Current Release Notes
 
-### Configuration Supabase
-
-Suivre [`SETUP_SUPABASE.md`](./SETUP_SUPABASE.md)
-
-## 💰 Coûts
-
-### Free Tier (pour commencer)
-- ✅ Vercel Hobby : Gratuit
-- ✅ Supabase Free : Gratuit
-- ✅ iNaturalist : Gratuit
-
-### Payant
-- **Gemini API** : ~$5-20/mois selon usage
-
-### Si vous scalez
-- Supabase Pro : $25/mois
-- Vercel Pro : $20/mois
-
-## 📝 Documentation
-
-- [`SETUP_SUPABASE.md`](./SETUP_SUPABASE.md) : Configuration Supabase complète
-- [`MIGRATION_COMPLETE.md`](./MIGRATION_COMPLETE.md) : Détails de la migration
-- [`INATURALIST_USAGE.md`](./INATURALIST_USAGE.md) : Guide d'utilisation iNaturalist
-
-## 🐛 Debug
-
-### Erreurs Gemini
-- Vérifier `GEMINI_API_KEY`
-- Vérifier le quota Google Cloud
-
-### Erreurs Supabase
-- Vérifier que les tables existent
-- Vérifier les RLS policies
-- Vérifier le bucket Storage
-
-### Erreurs d'upload
-- Vérifier que le bucket `discoveries` est public
-- Vérifier les policies Storage
-
-## 📞 Support
-
-- GitHub Issues : https://github.com/432-frequencies/botanica-migration/issues
-- Documentation Supabase : https://supabase.com/docs
-- Documentation Gemini : https://ai.google.dev/docs
-
-## 📄 License
-
-Propriétaire - Tous droits réservés
-
-## 👏 Credits
-
-- **Gemini API** : Google
-- **iNaturalist** : Community science platform
-- **Supabase** : Open source Firebase alternative
-- **Vercel** : Deployment platform
-
----
-
-**🎉 Migration terminée avec succès !**
-
-Pour commencer, suivez [`SETUP_SUPABASE.md`](./SETUP_SUPABASE.md)
+- Production URL: https://botanica-migration.vercel.app
+- Bundle ID: `com.w1ld.botanica`
+- App name: `W1LD`
+- iOS deployment target: iOS 15+
+- Main branch should stay deployable at all times.

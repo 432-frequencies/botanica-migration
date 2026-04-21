@@ -42,15 +42,6 @@ const ZODIAC_GUIDE = {
     shadow: "Manipulation et contrôle pour compenser la peur de la vulnérabilité",
     gift: "Mourir et renaître — guider les autres à travers leurs ténèbres",
   },
-  "Gemini": {
-    dates: "21 mai – 20 juin",
-    element: "Air ♦ Mutable",
-    planet: "Mercure",
-    traits: ["Esprit vif et adaptable", "Dualité intérieure permanente", "Curiosité insatiable", "Difficulté à s'engager", "Don de la communication"],
-    moods: ["Brillant quand stimulé", "Agité sans nouveauté", "Charmeur en société", "Anxieux dans le silence"],
-    shadow: "Superficialité pour fuir la profondeur émotionnelle",
-    gift: "Tisser des ponts entre les idées et les êtres",
-  },
 };
 
 const CONSTELLATION_TO_ZODIAC = {
@@ -95,10 +86,10 @@ function StarPattern({ stars, svgPath }) {
   );
 }
 
-export default function ConstellationModal({ constellation: c, isUnlocked, onClose, onUnlock, userLocation }) {
+export default function ConstellationModal({ constellation: c, isUnlocked, onClose, onUnlock, userLocation: _userLocation }) {
   const [tab, setTab] = useState(TAB_GUIDE);
   const [loading, setLoading] = useState(false);
-  const [chartUrl, setChartUrl] = useState(null);
+  const [chartUrl, _setChartUrl] = useState(null);
   const [chartLoading, setChartLoading] = useState(false);
 
   useEffect(() => {
@@ -135,7 +126,7 @@ export default function ConstellationModal({ constellation: c, isUnlocked, onClo
         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
       }
       onUnlock?.();
-    } catch (e) {}
+    } catch {}
     setLoading(false);
     onClose();
   };

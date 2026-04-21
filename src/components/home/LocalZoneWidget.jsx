@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/api/supabaseClient";
 import { Compass, Flame, MapPin, Share2, Sparkles, Target, Trophy, Zap } from "lucide-react";
 import { getLevelProgress } from "@/lib/leveling";
+import { buildLocalTerrainSignals } from "@/lib/localTerrain";
 import { useZoneLabel } from "@/lib/locationMeta";
+import { useIsActivePage } from "@/lib/ActivePageContext";
 import { getSpeciesKey, normalizeSpeciesCategory } from "@/lib/species";
-import { computeUserZoneScores, getSurroundingZoneIds, getZoneCenter, getZoneId } from "@/lib/zones";
+import { getZoneCenter, getZoneId } from "@/lib/zones";
+import { useCurrentZoneData } from "@/hooks/useCurrentZoneData";
 import { createPageUrl } from "@/utils";
 import ZoneShareCard from "@/components/home/ZoneShareCard";
 import { useNavigate } from "react-router-dom";
 
 const G = "var(--v1v-green)";
-const GOLD = "#C8960A";
+const GOLD = "var(--v1v-earth)";
+const EARTH_BG = "var(--v1v-earth-bg)";
+const EARTH_BORDER = "var(--v1v-earth-border)";
 const LEGEND_ZONE_GOAL = 10;
 const COLLECTOR_GOALS = [10, 25, 50, 100, 150, 250];
 
@@ -79,60 +83,60 @@ function buildChallenges({
   const effectiveOwnedZonesCount = Math.max(ownedZonesCount, isLeader ? 1 : 0);
 
   challenges.push({
-    key: "level",
-    icon: <Trophy className="w-3.5 h-3.5" style={{ color: G }} />,
-    title: next ? `Niveau ${next.level}` : `Niveau ${current.level}`,
-    description: next
-      ? `Encore ${xpToNext} XP pour débloquer ${next.label}`
-      : "Rang maximal atteint. Continue a enrichir le terrain autour de toi.",
-    progress: next ? progressPct : 100,
-    progressText: next ? `${totalPoints}/${next.xp} XP` : `${totalPoints} XP`,
-  });
+      key: "level",
+      icon: <Trophy className="w-3.5 h-3.5" style={{ color: G }} />,
+      title: next ? `Palier ${next.level}` : `Palier ${current.level}`,
+      description: next
+        ? `Encore ${xpToNext} XP pour débloquer ${next.label}`
+        : "Palier maximal atteint. Continue à enrichir le terrain autour de toi.",
+      progress: next ? progressPct : 100,
+      progressText: next ? `${totalPoints}/${next.xp} XP` : `${totalPoints} XP`,
+    });
 
   if (isLeader) {
     const leadMargin = Math.max(0, localSpeciesCount - (leader?.species_count || 0));
-    challenges.push({
-      key: "defense",
-      icon: <Compass className="w-3.5 h-3.5" style={{ color: GOLD }} />,
-      title: "Ancrer le repere",
-      description: leadMargin > 0
-        ? `Tu documentes ${leadMargin} ${pluralize(leadMargin, "espece")} d'avance dans cette zone`
-        : "Une observation de plus stabiliserait immediatement ton role de referent local",
-      progress: Math.min(100, Math.max(leadMargin, 1) * 20),
-      progressText: leadMargin > 0 ? `+${leadMargin} d'avance` : "Repere a renforcer",
-    });
-  } else {
-    const target = Math.max(1, (leader?.species_count || 0) + 1);
-    const gap = Math.max(1, target - localSpeciesCount);
-    const canTakeCrown = leader ? localSpeciesCount >= target : localSpeciesCount >= 1;
-    challenges.push({
-      key: "zone",
-      icon: <Target className="w-3.5 h-3.5" style={{ color: G }} />,
-      title: leader ? "Devenir referent" : "Devenir gardien",
-      description: canTakeCrown
-        ? leader
-          ? "Tu as deja le score pour devenir le referent local. Ouvre la carte et enregistre cette avancee."
-          : "La zone est prete a accueillir sa premiere observation structurante. Ouvre la carte et initie sa documentation."
+      challenges.push({
+        key: "defense",
+        icon: <Compass className="w-3.5 h-3.5" style={{ color: GOLD }} />,
+        title: "Ancrer le repère",
+        description: leadMargin > 0
+          ? `Tu documentes ${leadMargin} ${pluralize(leadMargin, "espèce")} d'avance dans cette zone`
+          : "Une observation de plus stabiliserait immédiatement ton rôle de référent local",
+        progress: Math.min(100, Math.max(leadMargin, 1) * 20),
+        progressText: leadMargin > 0 ? `+${leadMargin} d'avance` : "Repère à renforcer",
+      });
+    } else {
+      const target = Math.max(1, (leader?.species_count || 0) + 1);
+      const gap = Math.max(1, target - localSpeciesCount);
+      const canReachReference = leader ? localSpeciesCount >= target : localSpeciesCount >= 1;
+      challenges.push({
+        key: "zone",
+        icon: <Target className="w-3.5 h-3.5" style={{ color: G }} />,
+        title: leader ? "Atteindre la référence" : "Ouvrir la zone",
+        description: canReachReference
+          ? leader
+          ? "Tu as déjà le score pour rejoindre la référence locale. Ouvre la carte et enregistre cette avancée."
+          : "La zone est prête à accueillir sa première observation structurante. Ouvre la carte et initie sa documentation."
         : leader
-        ? `Encore ${gap} ${pluralize(gap, "espece")} unique pour depasser ${leader.display_name || "le referent actuel"}`
-        : "La zone est ouverte. Une espece unique ici suffit pour lancer la documentation.",
-      progress: canTakeCrown ? 100 : Math.min(100, (localSpeciesCount / target) * 100),
-      progressText: leader ? `${localSpeciesCount}/${target} especes` : `${Math.min(localSpeciesCount, 1)}/1 zone`,
-    });
-  }
+        ? `Encore ${gap} ${pluralize(gap, "espèce")} unique pour rejoindre ${leader.display_name || "la référence actuelle"}`
+        : "La zone est ouverte. Une espèce unique ici suffit pour lancer la documentation.",
+      progress: canReachReference ? 100 : Math.min(100, (localSpeciesCount / target) * 100),
+      progressText: leader ? `${localSpeciesCount}/${target} espèces` : `${Math.min(localSpeciesCount, 1)}/1 zone`,
+      });
+    }
 
   const legendProgress = Math.min(100, (effectiveOwnedZonesCount / LEGEND_ZONE_GOAL) * 100);
   challenges.push({
     key: "legend",
     icon: <Compass className="w-3.5 h-3.5" style={{ color: effectiveOwnedZonesCount > 0 ? GOLD : G }} />,
-    title: effectiveOwnedZonesCount > 0 ? "Chemin vers Legende" : "Devenir gardien",
+    title: effectiveOwnedZonesCount > 0 ? "Chemin vers Légende" : "Devenir gardien",
     description: effectiveOwnedZonesCount > 0
-      ? `${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentees - encore ${Math.max(0, LEGEND_ZONE_GOAL - effectiveOwnedZonesCount)} avant Legende`
-      : "0/1 zone documentee - initie ta premiere zone pour lancer ton parcours",
+      ? `${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentées - encore ${Math.max(0, LEGEND_ZONE_GOAL - effectiveOwnedZonesCount)} avant Légende`
+      : "0/1 zone documentée - initie ta première zone pour lancer ton parcours",
     progress: effectiveOwnedZonesCount > 0 ? legendProgress : 0,
     progressText: effectiveOwnedZonesCount > 0
       ? `${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones`
-      : "Premiere zone",
+      : "Première zone",
   });
 
   const nextCollectorGoal = getNextGoal(uniqueSpeciesCount, COLLECTOR_GOALS);
@@ -166,7 +170,7 @@ function buildChallenges({
     key: "specialist",
     icon: specialist.icon,
     title: specialist.title,
-    description: `Trouve encore ${Math.max(0, specialist.goal - specialist.count)} ${pluralize(Math.max(0, specialist.goal - specialist.count), specialist.noun, specialist.plural)} à repérer pour monter en spécialité`,
+    description: `Trouve encore ${Math.max(0, specialist.goal - specialist.count)} ${pluralize(Math.max(0, specialist.goal - specialist.count), specialist.noun, specialist.plural)} à repérer pour renforcer cette spécialité`,
     progress: specialist.progress,
     progressText: `${specialist.count}/${specialist.goal} ${pluralize(specialist.goal, specialist.noun, specialist.plural)}`,
   });
@@ -175,10 +179,10 @@ function buildChallenges({
   challenges.push({
     key: "streak",
     icon: <Flame className="w-3.5 h-3.5" style={{ color: streakDays >= 3 ? "#FF6B35" : G }} />,
-    title: "Série active",
-    description: streakDays > 0
-      ? `Encore ${Math.max(0, streakGoal - streakDays)} jour${Math.max(0, streakGoal - streakDays) > 1 ? "s" : ""} pour ton prochain palier de serie`
-      : "Observe aujourd'hui pour lancer une nouvelle serie de terrain",
+      title: "Série active",
+      description: streakDays > 0
+      ? `Encore ${Math.max(0, streakGoal - streakDays)} jour${Math.max(0, streakGoal - streakDays) > 1 ? "s" : ""} pour ton prochain palier de série`
+      : "Observe aujourd'hui pour lancer une nouvelle série de terrain",
     progress: streakDays > 0 ? Math.min(100, (streakDays / streakGoal) * 100) : 0,
     progressText: streakDays > 0 ? `${streakDays}/${streakGoal} jours` : "0/7 jours",
   });
@@ -188,10 +192,7 @@ function buildChallenges({
 
 function StatTile({ label, value, accent = G }) {
   return (
-    <div
-      className="px-2.5 py-2 rounded-lg"
-      style={{ background: "rgba(45,122,31,0.05)", border: "1px solid rgba(45,122,31,0.14)" }}
-    >
+    <div className="v1v-surface-card-soft px-2.5 py-2">
       <p className="text-[7px] font-black uppercase tracking-[0.3em] mb-1" style={{ color: "rgba(45,122,31,0.45)" }}>
         {label}
       </p>
@@ -209,68 +210,43 @@ function getZoneRoute(zoneId) {
   return `${baseRoute}?lat=${center.lat}&lng=${center.lng}&zoneId=${encodeURIComponent(zoneId)}`;
 }
 
-export default function LocalZoneWidget({ userEmail, geoCoords, profile, discoveries = [] }) {
+export default function LocalZoneWidget({ userEmail, geoCoords, profile, discoveries = [], zoneData = null }) {
   const navigate = useNavigate();
-  const [zoneId, setZoneId] = useState(null);
-  const [leader, setLeader] = useState(null);
-  const [nearbyLeaders, setNearbyLeaders] = useState({});
-  const [ownedZonesCount, setOwnedZonesCount] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const isHomeActive = useIsActivePage("Home");
   const [currentChallengeIndex, setCurrentChallengeIndex] = useState(0);
   const [showShareCard, setShowShareCard] = useState(false);
+  const fallbackZoneData = useCurrentZoneData({
+    userEmail,
+    discoveries,
+    geoCoords,
+    active: !zoneData && isHomeActive,
+    nearbyRadius: 3,
+    includeOwnedZonesCount: true,
+  });
+  const data = zoneData || fallbackZoneData;
 
-  useEffect(() => {
-    if (!geoCoords || !userEmail) return;
-    const loadZoneData = async () => {
-      setLoading(true);
-      try {
-        const currentZoneId = getZoneId(geoCoords.lat, geoCoords.lng);
-        const nearbyZoneIds = getSurroundingZoneIds(geoCoords.lat, geoCoords.lng, 2);
-        const [leaderRes, nearbyLeadersRes, ownedZonesRes] = await Promise.all([
-          supabase
-            .from("zone_leaders")
-            .select("*")
-            .eq("zone_id", currentZoneId)
-            .order("species_count", { ascending: false })
-            .limit(1),
-          supabase
-            .from("zone_leaders")
-            .select("*")
-            .in("zone_id", nearbyZoneIds)
-            .order("species_count", { ascending: false }),
-          supabase
-            .from("zone_leaders")
-            .select("zone_id", { count: "exact", head: true })
-            .eq("user_email", userEmail),
-        ]);
-
-        setZoneId(currentZoneId);
-        setLeader(leaderRes.data?.[0] || null);
-        setNearbyLeaders(Object.fromEntries((nearbyLeadersRes.data || []).map((entry) => [entry.zone_id, entry])));
-        setOwnedZonesCount(ownedZonesRes.count || 0);
-      } catch (error) {
-        console.error("[LocalZoneWidget] loadZoneData failed:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadZoneData();
-  }, [geoCoords?.lat, geoCoords?.lng, userEmail]);
-
-  const zoneScores = computeUserZoneScores(discoveries);
-  const activeZoneId = zoneId || getZoneId(geoCoords?.lat, geoCoords?.lng);
-  const localSpeciesCount = activeZoneId ? (zoneScores[activeZoneId] || 0) : 0;
-  const isLeader = leader?.user_email === userEmail;
-  const effectiveOwnedZonesCount = Math.max(ownedZonesCount, isLeader ? 1 : 0);
-  const noLeader = !leader;
-  const zoneTarget = Math.max(1, (leader?.species_count || 0) + (isLeader ? 0 : 1));
-  const zoneGap = leader ? Math.max(1, zoneTarget - localSpeciesCount) : 1;
-  const canTakeCrown = !isLeader && (leader ? localSpeciesCount >= zoneTarget : localSpeciesCount >= 1);
-  const zoneProgress = Math.min(100, (localSpeciesCount / zoneTarget) * 100);
+  const zoneScores = data.zoneScores || {};
+  const activeZoneId = data.zoneId || getZoneId(geoCoords?.lat, geoCoords?.lng);
+  const localSpeciesCount = data.localSpeciesCount ?? (activeZoneId ? (zoneScores[activeZoneId] || 0) : 0);
+  const leader = data.leader || null;
+  const nearbyLeaders = data.leadersByZone || {};
+  const isLeader = data.isLeader;
+  const effectiveOwnedZonesCount = Math.max(data.ownedZonesCount || 0, isLeader ? 1 : 0);
+  const noLeader = data.noLeader;
+  const zoneTarget = data.zoneTarget ?? Math.max(1, (leader?.species_count || 0) + (isLeader ? 0 : 1));
+  const zoneGap = data.zoneGap ?? (leader ? Math.max(1, zoneTarget - localSpeciesCount) : 1);
+  const canDocumentNow = data.canDocumentNow;
+  const zoneProgress = data.zoneProgress ?? Math.min(100, (localSpeciesCount / zoneTarget) * 100);
   const legendProgress = Math.min(100, (effectiveOwnedZonesCount / LEGEND_ZONE_GOAL) * 100);
   const totalPoints = profile?.total_points || 0;
   const streakDays = computeDiscoveryStreak(discoveries);
+  const terrainSignals = data.terrainSignals || buildLocalTerrainSignals({
+    currentZoneId: activeZoneId,
+    surroundingZoneIds: data.surroundingZoneIds || [],
+    leadersByZone: nearbyLeaders,
+    zoneScores,
+    userEmail,
+  });
   const challenges = buildChallenges({
     discoveries,
     isLeader,
@@ -280,57 +256,11 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
     totalPoints,
   });
   const challengeCount = challenges.length;
-  const surroundingZoneIds = getSurroundingZoneIds(geoCoords?.lat, geoCoords?.lng, 2);
-
-  const nearbyOpportunities = surroundingZoneIds
-    .map((candidateZoneId) => {
-      if (!candidateZoneId || candidateZoneId === activeZoneId) return null;
-
-      const candidateLeader = nearbyLeaders[candidateZoneId] || null;
-      if (candidateLeader?.user_email === userEmail) return null;
-
-      const userScore = zoneScores[candidateZoneId] || 0;
-      const free = !candidateLeader;
-      const targetScore = free ? 1 : (candidateLeader.species_count || 0) + 1;
-      const gap = Math.max(0, targetScore - userScore);
-      const ready = userScore >= targetScore;
-
-      if (!ready && !free && gap > 2) return null;
-
-      return {
-        zoneId: candidateZoneId,
-        leaderName: candidateLeader?.display_name || "Libre",
-        leaderScore: candidateLeader?.species_count || 0,
-        userScore,
-        targetScore,
-        gap,
-        ready,
-        free,
-      };
-    })
-    .filter(Boolean)
-    .sort((a, b) => Number(b.ready) - Number(a.ready) || a.gap - b.gap || b.userScore - a.userScore);
-
-  const defenseWatch = surroundingZoneIds
-    .map((candidateZoneId) => {
-      if (!candidateZoneId || candidateZoneId === activeZoneId) return null;
-
-      const candidateLeader = nearbyLeaders[candidateZoneId] || null;
-      if (candidateLeader?.user_email !== userEmail) return null;
-
-      const zoneScore = Math.max(zoneScores[candidateZoneId] || 0, candidateLeader?.species_count || 0);
-      if (zoneScore > 3) return null;
-
-      return {
-        zoneId: candidateZoneId,
-        score: zoneScore,
-      };
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.score - b.score)[0] || null;
+  const nearbyOpportunities = terrainSignals.nearbyOpportunities || [];
+  const defenseWatch = terrainSignals.fragileOwnedZones?.[0] || null;
 
   const primeTarget = nearbyOpportunities[0] || null;
-  const { label: activeZoneName } = useZoneLabel(activeZoneId);
+  const activeZoneName = data.zoneName || "";
   const { label: primeTargetName } = useZoneLabel(primeTarget?.zoneId);
   const { label: defenseZoneName } = useZoneLabel(defenseWatch?.zoneId);
   const displayedActiveZone = activeZoneName || activeZoneId || "Zone locale";
@@ -338,24 +268,24 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
   const displayedDefenseZone = defenseZoneName || defenseWatch?.zoneId || "secteur voisin";
   const primaryActionZoneId = isLeader
     ? defenseWatch?.zoneId || activeZoneId
-    : canTakeCrown || noLeader
+    : canDocumentNow || noLeader
       ? activeZoneId
       : primeTarget?.zoneId || activeZoneId;
   const primaryActionLabel = isLeader
     ? "Explorer la carte"
-    : canTakeCrown
+    : canDocumentNow
       ? "Documenter ici"
-      : noLeader
-        ? "Initier cette zone"
+    : noLeader
+        ? "Ouvrir cette zone"
         : "Explorer la carte";
 
   useEffect(() => {
-    if (challengeCount <= 1) return;
+    if (!isHomeActive || challengeCount <= 1) return;
     const interval = setInterval(() => {
       setCurrentChallengeIndex((prev) => (prev + 1) % challengeCount);
     }, 12000);
     return () => clearInterval(interval);
-  }, [challengeCount]);
+  }, [challengeCount, isHomeActive]);
 
   useEffect(() => {
     if (!challengeCount) {
@@ -365,118 +295,149 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
     setCurrentChallengeIndex((prev) => prev % challengeCount);
   }, [challengeCount]);
 
-  if (!geoCoords || !userEmail || loading) return null;
+  if (!geoCoords || !userEmail) return null;
+
+  if (data.loading) {
+    return (
+      <div className="v1v-surface-card-soft p-4">
+        <p className="text-[9px] font-black uppercase tracking-[0.32em] mb-2" style={{ color: "rgba(57,184,20,0.5)" }}>
+          Lecture de ta zone…
+        </p>
+        <div className="space-y-2">
+          <div className="h-3 rounded-full" style={{ background: "rgba(45,122,31,0.12)" }} />
+          <div className="h-3 rounded-full w-2/3" style={{ background: "rgba(45,122,31,0.08)" }} />
+          <div className="h-10 rounded-xl mt-3" style={{ background: "rgba(45,122,31,0.06)" }} />
+        </div>
+      </div>
+    );
+  }
+
+  if (data.error && !leader) {
+    return (
+      <div
+        className="v1v-surface-card-soft p-4"
+        style={{ background: "rgba(21,101,192,0.08)", borderColor: "rgba(21,101,192,0.18)" }}
+      >
+        <p className="text-[9px] font-black uppercase tracking-[0.32em] mb-2" style={{ color: "var(--v1v-blue)" }}>
+          Zone locale partielle
+        </p>
+        <p className="text-[11px] leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>
+          Ta progression locale est prête. Les repères du voisinage reviendront dès que la connexion se stabilise.
+        </p>
+      </div>
+    );
+  }
 
   const headline = isLeader
-    ? "Tu es le referent de cette zone"
-    : canTakeCrown
-      ? "Ton observation peut devenir un repere ici"
+    ? "Tu es le référent de cette zone"
+    : canDocumentNow
+      ? "Ton observation peut faire évoluer cette zone"
     : noLeader
-      ? "Cette zone attend son premier repere"
-      : `Encore ${zoneGap} ${pluralize(zoneGap, "espece")} pour devenir le referent local`;
+      ? "Cette zone attend sa première référence"
+      : `Encore ${zoneGap} ${pluralize(zoneGap, "espèce")} pour rejoindre la référence locale`;
 
   const supportingCopy = isLeader
     ? effectiveOwnedZonesCount >= LEGEND_ZONE_GOAL
-      ? "Votre parcours local est deja bien etabli. Continuez a enrichir le vivant zone apres zone."
-      : `${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentees - plus que ${LEGEND_ZONE_GOAL - effectiveOwnedZonesCount} avant le rang Legende`
+      ? "Ton parcours local est déjà bien établi. Continue à enrichir le vivant zone après zone."
+      : `${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentées - plus que ${LEGEND_ZONE_GOAL - effectiveOwnedZonesCount} avant le rang Légende`
     : effectiveOwnedZonesCount > 0
-      ? `${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentees - une nouvelle zone te rapproche du rang Legende`
-      : canTakeCrown
-        ? "0/1 zone documentee - ouvre la carte et enregistre ton premier repere local"
+      ? `${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentées - une nouvelle zone te rapproche du rang Légende`
+      : canDocumentNow
+        ? "0/1 zone documentée - ouvre la carte et enregistre ton premier repère local"
       : noLeader
-        ? "0/1 zone documentee - une seule espece unique ici suffit pour lancer cette zone"
-        : `0/1 zone documentee - depasse ${leader?.display_name || "le referent actuel"} et signe ta premiere zone`;
+        ? "0/1 zone documentée - une seule espèce unique ici suffit pour lancer cette zone"
+        : `0/1 zone documentée - rejoins ${leader?.display_name || "la référence actuelle"} et signe ta première zone`;
 
   const contributionStatus = isLeader
     ? effectiveOwnedZonesCount >= LEGEND_ZONE_GOAL
-      ? "Legende active"
-      : "Referent etabli"
-    : canTakeCrown
-      ? "Pret a documenter"
+      ? "Légende active"
+      : "Référent établi"
+    : canDocumentNow
+      ? "Prêt à documenter"
     : noLeader
-      ? "Premiere trace"
+      ? "Première trace"
         : "Elan local";
 
   const missionBrief = isLeader
     ? effectiveOwnedZonesCount >= LEGEND_ZONE_GOAL
-      ? "Continue a documenter tes zones et montre que ton parcours local reste utile et durable."
-      : "Trouve une nouvelle espece ici pour rendre cette zone encore plus riche et fiable."
-    : canTakeCrown
-      ? "Tu as deja le score. Ouvre la carte, enregistre cette observation cle et partage ton repere."
+      ? "Continue à documenter tes zones et montre que ton parcours local reste utile et durable."
+      : "Trouve une nouvelle espèce ici pour rendre cette zone encore plus riche et fiable."
+    : canDocumentNow
+      ? "Tu as déjà le score. Ouvre la carte, enregistre cette observation utile et partage ton repère."
     : noLeader
-        ? "Une espece unique ici suffit pour lancer la documentation de cette zone."
-        : `Trouve encore ${zoneGap} ${pluralize(zoneGap, "espece")} unique pour devenir le referent devant ${leader?.display_name || "le referent actuel"}.`;
+        ? "Une espèce unique ici suffit pour lancer la documentation de cette zone."
+        : `Trouve encore ${zoneGap} ${pluralize(zoneGap, "espèce")} unique pour rejoindre la référence devant ${leader?.display_name || "la référence actuelle"}.`;
 
   const broadcastLabel = isLeader
-    ? "Partager le repere"
-    : canTakeCrown
+    ? "Partager le repère"
+    : canDocumentNow
       ? "Partager l'observation"
-    : noLeader
-        ? "Partager l'initiation"
+      : noLeader
+        ? "Partager l'ouverture"
         : "Partager l'observation";
 
   const sharePayload = {
-    kind: isLeader ? "reference" : canTakeCrown ? "milestone" : noLeader ? "opening" : "progress",
+    kind: isLeader ? "reference" : canDocumentNow ? "milestone" : noLeader ? "opening" : "progress",
     zoneId: activeZoneId,
     zoneLabel: displayedActiveZone,
-    headline: isLeader ? "Referent local" : canTakeCrown ? "Observation cle" : noLeader ? "Zone a initier" : "Progression locale",
+    headline: isLeader ? "Référent local" : canDocumentNow ? "Observation utile" : noLeader ? "Zone à ouvrir" : "Progression locale",
     detail: isLeader
-      ? `Je documente ${displayedActiveZone} sur W1LD et j'enrichis cette zone espece apres espece.`
-      : canTakeCrown
-        ? `${displayedActiveZone} est prete a accueillir une observation cle.`
+      ? `Je documente ${displayedActiveZone} sur W1LD et j'enrichis cette zone espèce après espèce.`
+      : canDocumentNow
+        ? `${displayedActiveZone} est prête à accueillir une observation utile.`
         : noLeader
-          ? `${displayedActiveZone} n'a pas encore de reference locale. C'est le moment de lancer sa documentation.`
-          : `Je progresse dans ${displayedActiveZone}. Encore ${zoneGap} ${pluralize(zoneGap, "espece")} pour devenir le referent local.`,
-    metricValue: isLeader ? `${effectiveOwnedZonesCount}` : canTakeCrown ? "1" : noLeader ? "0-1" : `${zoneGap}`,
-    metricLabel: isLeader ? "Zones documentees" : canTakeCrown ? "Validation proche" : noLeader ? "Zone a lancer" : "Especes restantes",
+          ? `${displayedActiveZone} n'a pas encore de référence locale. C'est le moment de lancer sa documentation.`
+          : `Je progresse dans ${displayedActiveZone}. Encore ${zoneGap} ${pluralize(zoneGap, "espèce")} pour rejoindre la référence locale.`,
+    metricValue: isLeader ? `${effectiveOwnedZonesCount}` : canDocumentNow ? "1" : noLeader ? "0-1" : `${zoneGap}`,
+    metricLabel: isLeader ? "Zones documentées" : canDocumentNow ? "Validation proche" : noLeader ? "Zone à lancer" : "Espèces restantes",
     mission: missionBrief,
     broadcast: isLeader
-      ? `${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentees avant le rang Legende.`
-      : canTakeCrown
-        ? "Cette zone peut accueillir une observation cle des maintenant."
+      ? `${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentées avant le rang Légende.`
+      : canDocumentNow
+        ? "Cette zone peut accueillir une observation utile dès maintenant."
         : noLeader
-          ? "Une decouverte ici suffit pour lancer une nouvelle zone documentee."
-          : `${localSpeciesCount}/${zoneTarget} especes locales. La progression se construit dans cette zone.`,
+          ? "Une découverte ici suffit pour lancer une nouvelle zone documentée."
+          : `${localSpeciesCount}/${zoneTarget} espèces locales. La progression se construit dans cette zone.`,
     footerHeadline: isLeader
-      ? `${Math.max(1, streakDays)} jours de presence terrain`
+      ? `${Math.max(1, streakDays)} jours de présence terrain`
       : streakDays > 0
-        ? `Serie terrain ${streakDays} jours`
+        ? `Série terrain ${streakDays} jours`
         : "Le vivant n'attend pas",
     footerDetail: isLeader
-      ? `${Math.max(0, LEGEND_ZONE_GOAL - effectiveOwnedZonesCount)} zones encore avant Legende`
-      : canTakeCrown
-        ? "Observation cle disponible des maintenant"
+      ? `${Math.max(0, LEGEND_ZONE_GOAL - effectiveOwnedZonesCount)} zones encore avant Légende`
+      : canDocumentNow
+        ? "Observation utile disponible dès maintenant"
         : noLeader
-          ? "Premiere zone a initier"
-          : `${zoneGap} ${pluralize(zoneGap, "espece")} pour devenir referent`,
-    shareTitle: isLeader ? "Referent local" : canTakeCrown ? "Observation cle" : noLeader ? "Zone a initier" : "Observation en cours",
+          ? "Première zone à ouvrir"
+          : `${zoneGap} ${pluralize(zoneGap, "espèce")} pour rejoindre la référence`,
+    shareTitle: isLeader ? "Référent local" : canDocumentNow ? "Observation utile" : noLeader ? "Zone à ouvrir" : "Observation en cours",
     shareText: isLeader
-      ? `Je suis le referent local de ${displayedActiveZone} sur W1LD. ${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentees avant le rang Legende.`
-      : canTakeCrown
-        ? `Je peux enregistrer une observation cle dans ${displayedActiveZone} sur W1LD.`
+      ? `Je suis le référent local de ${displayedActiveZone} sur W1LD. ${effectiveOwnedZonesCount}/${LEGEND_ZONE_GOAL} zones documentées avant le rang Légende.`
+      : canDocumentNow
+        ? `Je peux enregistrer une observation utile dans ${displayedActiveZone} sur W1LD.`
         : noLeader
-          ? `${displayedActiveZone} attend sa premiere reference sur W1LD.`
-          : `Je documente ${displayedActiveZone} sur W1LD. Encore ${zoneGap} ${pluralize(zoneGap, "espece")} pour devenir le referent local.`,
+          ? `${displayedActiveZone} attend sa première référence sur W1LD.`
+          : `Je documente ${displayedActiveZone} sur W1LD. Encore ${zoneGap} ${pluralize(zoneGap, "espèce")} pour rejoindre la référence locale.`,
   };
 
   const primaryTrack = !isLeader && effectiveOwnedZonesCount === 0
     ? {
-        label: "Premiere zone documentee",
+        label: "Première zone documentée",
         value: "0/1",
-        progress: canTakeCrown ? 100 : zoneProgress,
-        foot: canTakeCrown
-          ? "Zone prete a etre validee"
+        progress: canDocumentNow ? 100 : zoneProgress,
+        foot: canDocumentNow
+          ? "Zone prête à être validée"
           : noLeader
-          ? "Premiere contribution a portee immediate"
-          : `${localSpeciesCount}/${zoneTarget} especes locales pour devenir referent`,
+          ? "Première contribution à portée immédiate"
+          : `${localSpeciesCount}/${zoneTarget} espèces locales pour rejoindre la référence`,
       }
     : {
-        label: "Route vers Legende",
+        label: "Route vers Légende",
         value: `${Math.min(effectiveOwnedZonesCount, LEGEND_ZONE_GOAL)}/${LEGEND_ZONE_GOAL}`,
         progress: legendProgress,
         foot: effectiveOwnedZonesCount >= LEGEND_ZONE_GOAL
-          ? "Statut Legende atteint"
-          : `${LEGEND_ZONE_GOAL - effectiveOwnedZonesCount} zones avant Legende`,
+          ? "Statut Légende atteint"
+          : `${LEGEND_ZONE_GOAL - effectiveOwnedZonesCount} zones avant Légende`,
       };
 
   const previewChallengeIndex = challengeCount > 1 ? (currentChallengeIndex + 1) % challengeCount : currentChallengeIndex;
@@ -484,44 +445,44 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
     ? {
         tone: primeTarget.ready ? G : primeTarget.free ? "#53C1FF" : GOLD,
         panelBg: primeTarget.ready
-          ? "rgba(45,122,31,0.08)"
+          ? "var(--v1v-green-bg)"
           : primeTarget.free
-            ? "rgba(83,193,255,0.08)"
-            : "rgba(200,150,10,0.08)",
+            ? "var(--v1v-blue-bg)"
+            : "var(--v1v-earth-bg)",
         panelBorder: primeTarget.ready
-          ? "rgba(45,122,31,0.28)"
+          ? "var(--v1v-green-ghost)"
           : primeTarget.free
-            ? "rgba(83,193,255,0.28)"
-            : "rgba(200,150,10,0.28)",
+            ? "var(--v1v-blue-border)"
+            : "var(--v1v-earth-border)",
         glow: primeTarget.ready
-          ? "0 0 24px rgba(45,122,31,0.14)"
+          ? "0 0 24px rgba(63,163,77,0.14)"
           : primeTarget.free
-            ? "0 0 24px rgba(83,193,255,0.14)"
-            : "0 0 24px rgba(200,150,10,0.14)",
+            ? "0 0 24px rgba(21,101,192,0.14)"
+            : "0 0 24px rgba(109,76,65,0.14)",
         badgeBg: primeTarget.ready
-          ? "rgba(45,122,31,0.18)"
+          ? "rgba(63,163,77,0.18)"
           : primeTarget.free
-            ? "rgba(83,193,255,0.18)"
-            : "rgba(200,150,10,0.18)",
+            ? "rgba(21,101,192,0.18)"
+            : "rgba(109,76,65,0.18)",
         badgeBorder: primeTarget.ready
-          ? "rgba(45,122,31,0.28)"
+          ? "rgba(63,163,77,0.28)"
           : primeTarget.free
-            ? "rgba(83,193,255,0.28)"
-            : "rgba(200,150,10,0.28)",
-        badge: primeTarget.ready ? "Prete" : primeTarget.free ? "A initier" : `-${primeTarget.gap} especes`,
+            ? "rgba(21,101,192,0.28)"
+            : "rgba(109,76,65,0.28)",
+        badge: primeTarget.ready ? "Prête" : primeTarget.free ? "À ouvrir" : `-${primeTarget.gap} espèces`,
         title: primeTarget.ready
-          ? `Observation cle sur ${displayedPrimeTarget}`
+          ? `Observation utile sur ${displayedPrimeTarget}`
           : primeTarget.free
-            ? `Zone a documenter : ${displayedPrimeTarget}`
-            : `Prochaine zone a enrichir : ${displayedPrimeTarget}`,
+            ? `Zone à documenter : ${displayedPrimeTarget}`
+            : `Prochaine zone à enrichir : ${displayedPrimeTarget}`,
         description: primeTarget.ready
-          ? "Tu as deja ce qu'il faut. Passe sur la carte et enregistre cette observation cle."
+          ? "Tu as déjà ce qu'il faut. Passe sur la carte et enregistre cette observation utile."
           : primeTarget.free
-            ? "Aucune reference locale en place. Un scan bien situe peut lancer la documentation autour de toi."
-            : `Plus que ${primeTarget.gap} ${pluralize(primeTarget.gap, "espece")} unique et ${primeTarget.leaderName} n'est plus le referent local.`,
+            ? "Aucune référence locale en place. Un scan bien situé peut lancer la documentation autour de toi."
+            : `Plus que ${primeTarget.gap} ${pluralize(primeTarget.gap, "espèce")} unique et ${primeTarget.leaderName} n'est plus la référence locale.`,
         leftLabel: "Vous",
         leftValue: primeTarget.userScore,
-        middleLabel: primeTarget.free ? "Seuil" : "Leader",
+        middleLabel: primeTarget.free ? "Seuil" : "Référence",
         middleValue: primeTarget.free ? 1 : primeTarget.leaderScore,
         rightLabel: "Zone",
         rightValue: displayedPrimeTarget,
@@ -529,17 +490,17 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
     : defenseWatch
       ? {
           tone: GOLD,
-          panelBg: "rgba(200,150,10,0.08)",
-        panelBorder: "rgba(200,150,10,0.28)",
-        glow: "0 0 24px rgba(200,150,10,0.14)",
-        badgeBg: "rgba(200,150,10,0.18)",
-        badgeBorder: "rgba(200,150,10,0.28)",
-        badge: "A renforcer",
+          panelBg: EARTH_BG,
+        panelBorder: EARTH_BORDER,
+        glow: "0 0 24px rgba(109,76,65,0.14)",
+        badgeBg: "rgba(109,76,65,0.18)",
+        badgeBorder: "rgba(109,76,65,0.28)",
+        badge: "À renforcer",
         title: `Zone à renforcer : ${displayedDefenseZone}`,
-        description: "Cette zone voisine reste encore legere. Une observation de plus y rendrait ta contribution beaucoup plus solide.",
+        description: "Cette zone voisine reste encore légère. Une observation de plus y rendrait ta contribution beaucoup plus solide.",
         leftLabel: "Score",
         leftValue: defenseWatch.score,
-        middleLabel: "Etat",
+        middleLabel: "État",
         middleValue: "Fragile",
         rightLabel: "Zone",
         rightValue: displayedDefenseZone,
@@ -553,11 +514,11 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
       )}
 
       <div
-        className="w-full p-4"
+        className="v1v-surface-card w-full p-4"
         style={{
-          background: isLeader ? "rgba(200,150,10,0.07)" : "rgba(45,122,31,0.08)",
-          border: `1px solid ${isLeader ? "rgba(200,150,10,0.35)" : "rgba(45,122,31,0.2)"}`,
-          boxShadow: isLeader ? "0 0 28px rgba(200,150,10,0.08)" : "none",
+          background: isLeader ? EARTH_BG : "var(--v1v-green-bg)",
+          border: `1px solid ${isLeader ? EARTH_BORDER : "var(--v1v-green-ghost)"}`,
+          boxShadow: isLeader ? "0 0 28px rgba(109,76,65,0.08)" : "none",
         }}
       >
       <div className="flex items-start justify-between gap-3 mb-3">
@@ -576,12 +537,12 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
         <span
           className="text-[7px] font-black uppercase tracking-[0.3em] px-2 py-1"
           style={{
-            background: isLeader ? "rgba(200,150,10,0.16)" : "rgba(45,122,31,0.12)",
+            background: isLeader ? "rgba(109,76,65,0.16)" : "rgba(63,163,77,0.12)",
             color: isLeader ? GOLD : G,
-            border: `1px solid ${isLeader ? "rgba(200,150,10,0.35)" : "rgba(45,122,31,0.25)"}`,
+            border: `1px solid ${isLeader ? EARTH_BORDER : "rgba(63,163,77,0.25)"}`,
           }}
         >
-          {isLeader ? "Referent" : noLeader ? "A initier" : "En cours"}
+          {isLeader ? "Référent" : noLeader ? "À ouvrir" : "En cours"}
         </span>
       </div>
 
@@ -592,30 +553,30 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
         >
           {headline}
         </p>
-        <p className="text-[9px] mt-1 leading-relaxed" style={{ color: "rgba(45,122,31,0.7)" }}>
+        <p className="text-[9px] mt-1 leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>
           {supportingCopy}
         </p>
       </div>
 
       <div className="mb-3">
         <div className="flex items-center justify-between mb-1.5">
-          <p className="text-[8px] uppercase tracking-[0.25em] font-black" style={{ color: "rgba(45,122,31,0.5)" }}>
+          <p className="text-[8px] uppercase tracking-[0.25em] font-black" style={{ color: "var(--v1v-fg-faint)" }}>
             {primaryTrack.label}
           </p>
           <p className="text-xs font-black" style={{ color: isLeader ? GOLD : G }}>
             {primaryTrack.value}
           </p>
         </div>
-        <div className="h-2 w-full rounded-full overflow-hidden" style={{ background: "rgba(45,122,31,0.1)" }}>
+        <div className="h-2 w-full rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
           <div
             className="h-2 transition-all duration-500"
             style={{
               width: `${primaryTrack.progress}%`,
-              background: isLeader ? `linear-gradient(90deg, ${GOLD}, #E7C35A)` : G,
+              background: isLeader ? `linear-gradient(90deg, ${GOLD}, var(--v1v-earth-soft))` : G,
             }}
           />
         </div>
-        <p className="text-[8px] uppercase tracking-[0.24em] font-black mt-1.5" style={{ color: "rgba(45,122,31,0.45)" }}>
+        <p className="text-[8px] uppercase tracking-[0.24em] font-black mt-1.5" style={{ color: "var(--v1v-fg-faint)" }}>
           {primaryTrack.foot}
         </p>
       </div>
@@ -627,35 +588,35 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
       </div>
 
       <div
-        className="mb-3 p-3 rounded-lg"
+        className="v1v-surface-card-soft mb-3 p-3"
         style={{
-          background: isLeader ? "rgba(200,150,10,0.08)" : "rgba(45,122,31,0.06)",
-          border: `1px solid ${isLeader ? "rgba(200,150,10,0.2)" : "rgba(45,122,31,0.18)"}`,
+          background: isLeader ? EARTH_BG : "var(--v1v-green-bg-light)",
+          border: `1px solid ${isLeader ? EARTH_BORDER : "var(--v1v-green-ghost)"}`,
         }}
       >
         <div className="flex items-center justify-between gap-3 mb-2">
-          <p className="text-[8px] font-black uppercase tracking-[0.3em]" style={{ color: "rgba(45,122,31,0.5)" }}>
+          <p className="text-[8px] font-black uppercase tracking-[0.3em]" style={{ color: "var(--v1v-fg-faint)" }}>
             Mission du jour
           </p>
           <span
             className="text-[7px] font-black uppercase tracking-[0.28em] px-2 py-1"
             style={{
               color: isLeader ? GOLD : G,
-              background: isLeader ? "rgba(200,150,10,0.14)" : "rgba(45,122,31,0.12)",
-              border: `1px solid ${isLeader ? "rgba(200,150,10,0.25)" : "rgba(45,122,31,0.2)"}`,
+              background: isLeader ? "rgba(109,76,65,0.14)" : "rgba(63,163,77,0.12)",
+              border: `1px solid ${isLeader ? EARTH_BORDER : "rgba(63,163,77,0.2)"}`,
             }}
           >
             {contributionStatus}
           </span>
         </div>
-        <p className="text-[10px] leading-relaxed mb-3" style={{ color: "rgba(45,122,31,0.78)" }}>
+        <p className="text-[10px] leading-relaxed mb-3" style={{ color: "var(--v1v-fg-muted)" }}>
           {missionBrief}
         </p>
         <div className="grid grid-cols-2 gap-2">
           <StatTile
             label="Serie"
             value={streakDays > 0 ? `${streakDays}j` : "À lancer"}
-            accent={streakDays >= 3 ? "#FF6B35" : isLeader ? GOLD : G}
+            accent={streakDays >= 3 ? "var(--v1v-coral)" : isLeader ? GOLD : G}
           />
           <StatTile
             label="Partage"
@@ -667,7 +628,7 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
 
       {tacticalPanel && (
         <div
-          className="mb-3 p-3 rounded-lg"
+          className="v1v-surface-card-soft mb-3 p-3"
           style={{
             background: tacticalPanel.panelBg,
             border: `1px solid ${tacticalPanel.panelBorder}`,
@@ -675,8 +636,8 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
           }}
         >
           <div className="flex items-center justify-between gap-3 mb-2">
-            <p className="text-[8px] font-black uppercase tracking-[0.3em]" style={{ color: "rgba(45,122,31,0.5)" }}>
-            Opportunite proche
+            <p className="text-[8px] font-black uppercase tracking-[0.3em]" style={{ color: "var(--v1v-fg-faint)" }}>
+            Opportunité proche
             </p>
             <span
               className="text-[7px] font-black uppercase tracking-[0.28em] px-2 py-1"
@@ -692,7 +653,7 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
           <p className="text-[10px] font-black uppercase tracking-[0.08em] mb-1.5" style={{ color: tacticalPanel.tone }}>
             {tacticalPanel.title}
           </p>
-          <p className="text-[9px] leading-relaxed mb-3" style={{ color: "rgba(226,234,224,0.72)" }}>
+          <p className="text-[9px] leading-relaxed mb-3" style={{ color: "var(--v1v-fg-muted)" }}>
             {tacticalPanel.description}
           </p>
           <div className="grid grid-cols-3 gap-2">
@@ -705,26 +666,26 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
 
       <button
         onClick={() => navigate(getZoneRoute(primaryActionZoneId))}
-        className="w-full mb-2 py-3 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] transition-all"
+        className="v1v-button-primary mb-2 flex w-full items-center justify-center gap-2"
         style={{
-          background: isLeader ? "rgba(200,150,10,0.16)" : "rgba(45,122,31,0.18)",
+          background: isLeader ? "rgba(109,76,65,0.16)" : "rgba(63,163,77,0.18)",
           color: isLeader ? GOLD : G,
-          border: `1px solid ${isLeader ? "rgba(200,150,10,0.38)" : "rgba(45,122,31,0.3)"}`,
-          boxShadow: isLeader ? "0 0 20px rgba(200,150,10,0.12)" : "0 0 18px rgba(45,122,31,0.08)",
+          border: `1px solid ${isLeader ? EARTH_BORDER : "rgba(63,163,77,0.3)"}`,
+          boxShadow: isLeader ? "0 0 20px rgba(109,76,65,0.12)" : "0 0 18px rgba(63,163,77,0.08)",
         }}
       >
         {isLeader ? <Compass className="w-3.5 h-3.5" /> : <Target className="w-3.5 h-3.5" />}
         {primaryActionLabel}
       </button>
 
-      {(isLeader || canTakeCrown || noLeader) && (
+      {(isLeader || canDocumentNow || noLeader) && (
         <button
           onClick={() => setShowShareCard(true)}
-          className="w-full mb-3 py-2.5 flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] transition-all"
+          className="v1v-button-secondary mb-3 flex w-full items-center justify-center gap-2"
           style={{
             background: "transparent",
             color: isLeader ? GOLD : G,
-            border: `1px solid ${isLeader ? "rgba(200,150,10,0.22)" : "rgba(45,122,31,0.22)"}`,
+            border: `1px solid ${isLeader ? EARTH_BORDER : "rgba(63,163,77,0.22)"}`,
           }}
         >
           <Share2 className="w-3.5 h-3.5" />
@@ -734,7 +695,7 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
 
       {challengeCount > 0 && (
         <div className="pt-3 border-t" style={{ borderColor: "rgba(45,122,31,0.2)" }}>
-          <p className="text-[7px] font-black uppercase tracking-[0.3em] mb-2" style={{ color: "rgba(45,122,31,0.5)" }}>
+          <p className="text-[7px] font-black uppercase tracking-[0.3em] mb-2" style={{ color: "var(--v1v-fg-faint)" }}>
             Objectifs actifs
           </p>
           <div className="space-y-2">
@@ -750,10 +711,10 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
                   style={{ transform: isCurrent ? "scale(1)" : "scale(0.97)" }}
                 >
                   <div
-                    className="flex items-start gap-2 p-2 rounded-lg"
+                    className="v1v-surface-card-soft flex items-start gap-2 p-2"
                     style={{
-                      background: isCurrent ? "rgba(45,122,31,0.08)" : "rgba(45,122,31,0.04)",
-                      border: `1px solid ${isCurrent ? "rgba(45,122,31,0.18)" : "rgba(45,122,31,0.12)"}`,
+                      background: isCurrent ? "var(--v1v-green-bg)" : "var(--v1v-green-bg-light)",
+                      border: `1px solid ${isCurrent ? "var(--v1v-green-ghost)" : "rgba(63,163,77,0.12)"}`,
                     }}
                   >
                     <div className="flex-shrink-0 mt-0.5">
@@ -763,21 +724,21 @@ export default function LocalZoneWidget({ userEmail, geoCoords, profile, discove
                       <p className="text-[9px] font-black uppercase tracking-wider" style={{ color: G }}>
                         {challenge.title}
                       </p>
-                      <p className="text-[8px] leading-relaxed mt-0.5" style={{ color: "rgba(45,122,31,0.7)" }}>
+                      <p className="text-[8px] leading-relaxed mt-0.5" style={{ color: "var(--v1v-fg-muted)" }}>
                         {challenge.description}
                       </p>
                       {challenge.progress !== null && challenge.progress !== undefined && (
                         <div className="mt-1.5">
-                          <div className="h-1 w-full rounded-full" style={{ background: "rgba(45,122,31,0.15)" }}>
+                          <div className="h-1 w-full rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}>
                             <div
                               className="h-1 rounded-full transition-all duration-700"
                               style={{
                                 width: `${Math.min(challenge.progress, 100)}%`,
-                                background: challenge.progress >= 100 ? "#2EA80F" : "rgba(45,122,31,0.5)",
+                                background: challenge.progress >= 100 ? "var(--v1v-green)" : "rgba(63,163,77,0.5)",
                               }}
                             />
                           </div>
-                          <p className="text-[7px] font-black uppercase mt-0.5" style={{ color: "rgba(45,122,31,0.5)" }}>
+                          <p className="text-[7px] font-black uppercase mt-0.5" style={{ color: "var(--v1v-fg-faint)" }}>
                             {challenge.progressText}
                           </p>
                         </div>

@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS reference_species (
   longitude DECIMAL(10, 7) NOT NULL,
   category TEXT NOT NULL DEFAULT 'plant',
   rarity TEXT DEFAULT 'commune',
+  photo_url TEXT,
+  photo_attribution TEXT,
+  photo_source TEXT,
   description TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

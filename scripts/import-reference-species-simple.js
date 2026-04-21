@@ -8,6 +8,7 @@ import path from 'path';
 import { createClient } from '@supabase/supabase-js';
 import { parse } from 'csv-parse/sync';
 import { fileURLToPath } from 'url';
+import { repairReferenceSpeciesRecord } from '../src/lib/referenceTaxonomy.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -65,15 +66,23 @@ async function importSpecies() {
   console.log(`   📁 1000 espèces urbaines/parcs\n`);
 
   // 2. Transformer les données
-  const species = allRecords.map(record => ({
-    common_name: record.common_name,
-    scientific_name: record.scientific_name || null,
-    latitude: parseFloat(record.latitude),
-    longitude: parseFloat(record.longitude),
-    category: record.category || 'plant',
-    rarity: RARITY_MAP[record.rarity] || 'commune',
-    description: null,
-  }));
+  const species = allRecords.map(record => {
+    const repaired = repairReferenceSpeciesRecord({
+      common_name: record.common_name,
+      scientific_name: record.scientific_name || null,
+      category: record.category || 'plant',
+    });
+
+    return {
+      common_name: repaired.common_name,
+      scientific_name: repaired.scientific_name,
+      latitude: parseFloat(record.latitude),
+      longitude: parseFloat(record.longitude),
+      category: repaired.category,
+      rarity: RARITY_MAP[record.rarity] || 'commune',
+      description: null,
+    };
+  });
 
   // Validation
   const valid = species.filter(s =>

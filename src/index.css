@@ -4,40 +4,40 @@
 
 @layer base {
   :root {
-    /* === W1LD atlas palette === */
-    --background: 108 13% 6%;       /* #0D110D */
-    --foreground: 88 17% 92%;       /* #EDF0E6 */
-    --card: 108 12% 10%;            /* #151B15 */
-    --card-foreground: 100 20% 92%;
-    --popover: 108 12% 10%;
-    --popover-foreground: 100 20% 92%;
-    --primary: 92 28% 49%;          /* #7DA05A */
-    --primary-foreground: 108 13% 6%;
-    --secondary: 108 12% 15%;
-    --secondary-foreground: 100 20% 92%;
-    --muted: 108 12% 15%;
-    --muted-foreground: 100 10% 55%;
-    --accent: 108 12% 15%;
-    --accent-foreground: 100 20% 92%;
-    --destructive: 0 72% 53%;
-    --destructive-foreground: 100 20% 92%;
-    --border: 92 20% 25%;
-    --input: 92 20% 25%;
-    --ring: 92 28% 49%;
+    /* === W1LD ecological atlas palette === */
+    --background: 157 35% 8%;       /* #0D1B16 */
+    --foreground: 120 16% 94%;      /* #EEF3ED */
+    --card: 156 28% 11%;            /* #13231C */
+    --card-foreground: 120 16% 94%;
+    --popover: 156 28% 11%;
+    --popover-foreground: 120 16% 94%;
+    --primary: 127 45% 44%;         /* #3FA34D */
+    --primary-foreground: 157 35% 8%;
+    --secondary: 156 28% 15%;
+    --secondary-foreground: 120 16% 94%;
+    --muted: 156 24% 16%;
+    --muted-foreground: 120 8% 66%;
+    --accent: 211 80% 41%;          /* #1565C0 */
+    --accent-foreground: 120 16% 94%;
+    --destructive: 1 77% 55%;       /* #E53935 */
+    --destructive-foreground: 120 16% 94%;
+    --border: 156 24% 24%;
+    --input: 156 24% 24%;
+    --ring: 127 45% 44%;
     --radius: 0.5rem;
-    --chart-1: 92 28% 49%;
-    --chart-2: 31 39% 52%;
-    --chart-3: 200 22% 53%;
-    --chart-4: 259 25% 54%;
-    --chart-5: 0 72% 53%;
-    --sidebar-background: 108 13% 6%;
-    --sidebar-foreground: 100 20% 92%;
-    --sidebar-primary: 92 28% 49%;
-    --sidebar-primary-foreground: 108 13% 6%;
-    --sidebar-accent: 108 12% 15%;
-    --sidebar-accent-foreground: 100 20% 92%;
-    --sidebar-border: 92 20% 25%;
-    --sidebar-ring: 92 28% 49%;
+    --chart-1: 127 45% 44%;
+    --chart-2: 211 80% 41%;
+    --chart-3: 21 54% 33%;
+    --chart-4: 17 100% 63%;
+    --chart-5: 49 97% 60%;
+    --sidebar-background: 157 35% 8%;
+    --sidebar-foreground: 120 16% 94%;
+    --sidebar-primary: 127 45% 44%;
+    --sidebar-primary-foreground: 157 35% 8%;
+    --sidebar-accent: 156 28% 15%;
+    --sidebar-accent-foreground: 120 16% 94%;
+    --sidebar-border: 156 24% 24%;
+    --sidebar-ring: 127 45% 44%;
   }
 }
 

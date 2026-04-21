@@ -31,7 +31,7 @@ export default function AchievementToast({ achievements, onDone }) {
       >
         <div className="flex-1 min-w-0">
           <p className="text-[8px] font-black tracking-[0.5em] uppercase mb-0.5" style={{ color: "rgba(0,0,0,0.4)" }}>
-            Achievement Unlocked
+            Badge débloqué
           </p>
           <p className="text-sm font-black uppercase truncate" style={{ color: "#0A0A0A" }}>{ach.title}</p>
           {ach.bonus > 0 && (

@@ -1,157 +1,300 @@
 /**
- * Enrichit les espèces de référence avec des photos depuis Wikipédia
- * Utilise le nom scientifique pour chercher l'image
+ * Enrichit les espèces de référence avec des photos depuis Wikipédia.
  *
- * Usage: node scripts/enrich-species-wikipedia.js
+ * Usage:
+ *   source .env.local
+ *   node scripts/enrich-species-wikipedia.js
+ *   node scripts/enrich-species-wikipedia.js --test
+ *   node scripts/enrich-species-wikipedia.js --limit=250
  */
 
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = "https://rejrtvrkpkopjmowzuqn.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJlanJ0dnJrcGtvcGptb3d6dXFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0MTY0NDIsImV4cCI6MjA5MDk5MjQ0Mn0.nLTm6EXzcu72cJpArcX7LcuXUKVVg19mSJrxrJbLbhs";
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('❌ Variables manquantes: SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont requises.');
+  console.error('   Lance par exemple: source .env.local && node scripts/enrich-species-wikipedia.js');
+  process.exit(1);
+}
 
-/**
- * Cherche une image sur Wikipédia pour un nom scientifique
- */
-async function getWikipediaImage(scientificName) {
-  if (!scientificName || scientificName.trim() === '') {
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false }
+});
+
+const args = process.argv.slice(2);
+const IS_TEST = args.includes('--test');
+const LIMIT_ARG = args.find((arg) => arg.startsWith('--limit='));
+const BATCH_SIZE = LIMIT_ARG ? parseInt(LIMIT_ARG.split('=')[1], 10) : (IS_TEST ? 5 : 100);
+const pageSearchCache = new Map();
+const imageCache = new Map();
+const commonsImageCache = new Map();
+
+function isRemoteImageUrl(value) {
+  return typeof value === 'string' && /^https?:\/\//i.test(value);
+}
+
+function buildSearchQueries(species) {
+  const scientific = (species.scientific_name || '').replace(/\s+/g, ' ').trim();
+  const common = (species.common_name || '').replace(/\s+/g, ' ').trim();
+  const strippedScientific = scientific
+    .replace(/\b(subsp\.?|ssp\.?|var\.?|forma|f\.)\s+\S+/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const binomial = strippedScientific.split(' ').slice(0, 2).join(' ').trim();
+
+  return [...new Set([scientific, strippedScientific, binomial, common].filter(Boolean))];
+}
+
+async function searchWikipediaPage(query, lang) {
+  const cacheKey = `${lang}:${query}`;
+  if (pageSearchCache.has(cacheKey)) {
+    return pageSearchCache.get(cacheKey);
+  }
+
+  const baseUrl = lang === 'fr' ? 'https://fr.wikipedia.org' : 'https://en.wikipedia.org';
+  const searchUrl = `${baseUrl}/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(query)}&srlimit=3&origin=*`;
+
+  const res = await fetch(searchUrl);
+  if (!res.ok) {
+    pageSearchCache.set(cacheKey, null);
     return null;
   }
 
-  try {
-    // 1. Chercher la page Wikipédia
-    const searchUrl = `https://fr.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(scientificName)}&srlimit=1&origin=*`;
+  const data = await res.json();
+  const pageTitle = data.query?.search?.[0]?.title || null;
+  pageSearchCache.set(cacheKey, pageTitle);
+  return pageTitle;
+}
 
-    const searchRes = await fetch(searchUrl);
-    const searchData = await searchRes.json();
+async function getPageMainImage(pageTitle, lang) {
+  const cacheKey = `${lang}:${pageTitle}`;
+  if (imageCache.has(cacheKey)) {
+    return imageCache.get(cacheKey);
+  }
 
-    if (!searchData.query?.search?.[0]) {
-      // Essayer en anglais si pas de résultat en français
-      const searchUrlEn = `https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(scientificName)}&srlimit=1&origin=*`;
-      const searchResEn = await fetch(searchUrlEn);
-      const searchDataEn = await searchResEn.json();
+  const baseUrl = lang === 'fr' ? 'https://fr.wikipedia.org' : 'https://en.wikipedia.org';
+  const url = `${baseUrl}/w/api.php?action=query&format=json&prop=pageimages&titles=${encodeURIComponent(pageTitle)}&pithumbsize=800&origin=*`;
 
-      if (!searchDataEn.query?.search?.[0]) {
-        return null;
+  const res = await fetch(url);
+  if (!res.ok) {
+    imageCache.set(cacheKey, null);
+    return null;
+  }
+
+  const data = await res.json();
+  const pages = data.query?.pages;
+  if (!pages) {
+    imageCache.set(cacheKey, null);
+    return null;
+  }
+
+  const page = Object.values(pages)[0];
+  const imageUrl = page?.thumbnail?.source || null;
+  imageCache.set(cacheKey, imageUrl);
+  return imageUrl;
+}
+
+async function searchCommonsImage(query) {
+  if (commonsImageCache.has(query)) {
+    return commonsImageCache.get(query);
+  }
+
+  const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrnamespace=6&gsrlimit=5&prop=imageinfo&iiprop=url&iiurlwidth=800&origin=*`;
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    commonsImageCache.set(query, null);
+    return null;
+  }
+
+  const data = await res.json();
+  const pages = Object.values(data.query?.pages || {});
+  const match = pages.find((page) => page.imageinfo?.[0]?.thumburl || page.imageinfo?.[0]?.url) || null;
+  const imageUrl = match?.imageinfo?.[0]?.thumburl || match?.imageinfo?.[0]?.url || null;
+
+  commonsImageCache.set(query, imageUrl);
+  return imageUrl;
+}
+
+async function getWikipediaImage(species) {
+  const queries = buildSearchQueries(species);
+  const languages = ['fr', 'en'];
+
+  for (const query of queries) {
+    for (const lang of languages) {
+      try {
+        const pageTitle = await searchWikipediaPage(query, lang);
+        if (!pageTitle) continue;
+
+        const imageUrl = await getPageMainImage(pageTitle, lang);
+        if (!imageUrl) continue;
+
+        return {
+          imageUrl,
+          source: lang === 'fr' ? 'wikipedia_fr' : 'wikipedia_en',
+          attribution: `Wikipedia (${lang.toUpperCase()}) - ${pageTitle}`,
+        };
+      } catch (error) {
+        console.error(`   ⚠️  Erreur Wikipédia (${lang}/${query}):`, error.message);
       }
-
-      const pageTitle = searchDataEn.query.search[0].title;
-      return await getPageMainImage(pageTitle, 'en');
     }
-
-    const pageTitle = searchData.query.search[0].title;
-    return await getPageMainImage(pageTitle, 'fr');
-
-  } catch (error) {
-    console.error(`   ⚠️  Erreur Wikipedia pour ${scientificName}:`, error.message);
-    return null;
   }
+
+  for (const query of queries) {
+    try {
+      const imageUrl = await searchCommonsImage(query);
+      if (!imageUrl) continue;
+
+      return {
+        imageUrl,
+        source: 'wikimedia_commons',
+        attribution: `Wikimedia Commons - ${query}`,
+      };
+    } catch (error) {
+      console.error(`   ⚠️  Erreur Commons (${query}):`, error.message);
+    }
+  }
+
+  return null;
 }
 
-/**
- * Récupère l'image principale d'une page Wikipédia
- */
-async function getPageMainImage(pageTitle, lang = 'fr') {
-  try {
-    const baseUrl = lang === 'fr' ? 'https://fr.wikipedia.org' : 'https://en.wikipedia.org';
-    const url = `${baseUrl}/w/api.php?action=query&format=json&prop=pageimages&titles=${encodeURIComponent(pageTitle)}&pithumbsize=500&origin=*`;
-
-    const res = await fetch(url);
-    const data = await res.json();
-
-    const pages = data.query?.pages;
-    if (!pages) return null;
-
-    const page = Object.values(pages)[0];
-    return page?.thumbnail?.source || null;
-
-  } catch (error) {
-    return null;
-  }
-}
-
-/**
- * Enrichit toutes les espèces sans photo
- */
-async function enrichSpecies() {
-  console.log('🖼️  Enrichissement des espèces avec photos Wikipédia\n');
-  console.log('⚠️  Attention: Ce script peut prendre 10-20 minutes pour 2500 espèces');
-  console.log('   (Rate limit: 1 requête par seconde pour Wikipédia)\n');
-
-  // 1. Récupérer toutes les espèces sans description (on stockera l'URL dans description temporairement)
-  const { data: species, error } = await supabase
+async function detectPhotoColumn() {
+  const { error } = await supabase
     .from('reference_species')
-    .select('id, common_name, scientific_name, description')
-    .is('description', null)
-    .limit(100); // Traiter par batch de 100
+    .select('photo_url')
+    .limit(1);
 
-  if (error) {
-    console.error('❌ Erreur:', error.message);
+  return !error;
+}
+
+function getExistingPhoto(species, usePhotoColumn) {
+  if (usePhotoColumn && isRemoteImageUrl(species.photo_url)) return species.photo_url;
+  if (isRemoteImageUrl(species.description)) return species.description;
+  return null;
+}
+
+async function updateSpeciesPhoto(species, image, usePhotoColumn) {
+  const payload = usePhotoColumn
+    ? {
+        photo_url: image.imageUrl,
+        photo_attribution: image.attribution,
+        photo_source: image.source,
+      }
+    : {
+        description: image.imageUrl,
+      };
+
+  return await supabase
+    .from('reference_species')
+    .update(payload)
+    .eq('id', species.id);
+}
+
+async function fetchSpeciesBatch(usePhotoColumn) {
+  const selectFields = usePhotoColumn
+    ? 'id, common_name, scientific_name, photo_url, description'
+    : 'id, common_name, scientific_name, description';
+
+  const { data, error } = await supabase
+    .from('reference_species')
+    .select(selectFields);
+
+  if (error) throw error;
+
+  return {
+    species: (data || [])
+      .filter((species) => !getExistingPhoto(species, usePhotoColumn))
+      .slice(0, BATCH_SIZE),
+    selectFields,
+  };
+}
+
+async function countRemaining(selectFields, usePhotoColumn) {
+  const { data, error } = await supabase
+    .from('reference_species')
+    .select(selectFields);
+
+  if (error) return null;
+
+  return (data || []).filter((species) => !getExistingPhoto(species, usePhotoColumn)).length;
+}
+
+async function main() {
+  console.log('\n🖼️  Enrichissement des espèces avec photos Wikipédia\n');
+  console.log(`⚡ Mode: ${IS_TEST ? 'TEST' : 'PRODUCTION'} (${BATCH_SIZE} espèces max)`);
+  console.log('⏱️  Rate limit: 1 requête/seconde\n');
+
+  const usePhotoColumn = await detectPhotoColumn();
+  console.log(`🗂️  Stockage cible: ${usePhotoColumn ? 'photo_url' : 'description (legacy)'}`);
+
+  const { species, selectFields } = await fetchSpeciesBatch(usePhotoColumn);
+
+  if (!species.length) {
+    console.log('✅ Toutes les espèces ont déjà une photo.\n');
     return;
   }
 
-  if (!species || species.length === 0) {
-    console.log('✅ Toutes les espèces ont déjà des photos (ou aucune espèce dans la DB)\n');
-    return;
-  }
-
-  console.log(`📊 ${species.length} espèces à enrichir\n`);
+  console.log(`📦 ${species.length} espèces à enrichir\n`);
+  console.log('─'.repeat(70));
+  console.log('');
 
   let enriched = 0;
   let notFound = 0;
   let errors = 0;
+  const startTime = Date.now();
 
   for (let i = 0; i < species.length; i++) {
-    const sp = species[i];
+    const speciesItem = species[i];
+    const progress = Math.round(((i + 1) / species.length) * 100);
 
-    console.log(`${i + 1}/${species.length} - ${sp.common_name} (${sp.scientific_name || 'pas de nom scientifique'})`);
+    console.log(`[${i + 1}/${species.length}] (${progress}%) ${speciesItem.common_name}`);
+    console.log(`   🔬 ${speciesItem.scientific_name || 'Pas de nom scientifique'}`);
 
-    if (!sp.scientific_name || sp.scientific_name.trim() === '') {
-      console.log('   ⚠️  Pas de nom scientifique, ignoré');
+    const image = await getWikipediaImage(speciesItem);
+
+    if (!image?.imageUrl) {
+      console.log('   ⚠️  Aucune photo trouvée sur Wikipédia');
       notFound++;
+      console.log('');
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       continue;
     }
 
-    try {
-      const imageUrl = await getWikipediaImage(sp.scientific_name);
-
-      if (imageUrl) {
-        // Stocker l'URL dans le champ description (temporaire)
-        const { error: updateError } = await supabase
-          .from('reference_species')
-          .update({ description: imageUrl })
-          .eq('id', sp.id);
-
-        if (updateError) {
-          console.log('   ❌ Erreur update:', updateError.message);
-          errors++;
-        } else {
-          console.log(`   ✅ Photo trouvée: ${imageUrl.substring(0, 60)}...`);
-          enriched++;
-        }
-      } else {
-        console.log('   ⚠️  Aucune photo trouvée sur Wikipédia');
-        notFound++;
-      }
-
-      // Rate limit: attendre 1 seconde entre chaque requête
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-    } catch (err) {
-      console.log(`   ❌ Erreur: ${err.message}`);
+    const { error } = await updateSpeciesPhoto(speciesItem, image, usePhotoColumn);
+    if (error) {
+      console.log(`   ❌ Erreur update: ${error.message}`);
       errors++;
+    } else {
+      console.log(`   ✅ Photo trouvée: ${image.imageUrl.substring(0, 60)}...`);
+      enriched++;
     }
+
+    console.log('');
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
-  console.log('\n📊 Résultat:');
-  console.log(`   ✅ Photos trouvées: ${enriched}`);
-  console.log(`   ⚠️  Non trouvées: ${notFound}`);
-  console.log(`   ❌ Erreurs: ${errors}`);
-  console.log(`\n✨ Enrichissement terminé!\n`);
-  console.log('💡 Note: Les URLs sont stockées dans le champ "description"');
-  console.log('   Tu peux ensuite créer une colonne "photo_url" et migrer les données\n');
+  const duration = Math.round((Date.now() - startTime) / 1000);
+  const minutes = Math.floor(duration / 60);
+  const seconds = duration % 60;
+  const remaining = await countRemaining(selectFields, usePhotoColumn);
+
+  console.log('─'.repeat(70));
+  console.log('\n📊 RÉSULTAT FINAL\n');
+  console.log(`   ✅ Photos trouvées:          ${enriched}`);
+  console.log(`   ⚠️  Non trouvées:            ${notFound}`);
+  console.log(`   ❌ Erreurs:                  ${errors}`);
+  console.log(`\n⏱️  Durée: ${minutes}m ${seconds}s`);
+
+  if (remaining === 0) {
+    console.log('\n🎉 Toutes les espèces ont maintenant une photo.\n');
+  } else if (remaining !== null) {
+    console.log(`\n📦 Il reste ${remaining} espèces à traiter`);
+    console.log('   Relance le script pour continuer.\n');
+  } else {
+    console.log('\n⚠️  Impossible de recompter le reliquat automatiquement.\n');
+  }
 }
 
-enrichSpecies();
+main();

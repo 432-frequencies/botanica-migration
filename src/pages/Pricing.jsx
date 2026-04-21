@@ -1,171 +1,353 @@
 import { useState } from "react";
-import { createPageUrl } from "@/utils";
-import { Check, ArrowLeft, Zap, Star, Shield } from "lucide-react";
-import { Link } from "react-router-dom";
-
-const G = "#39FF14";
-const GDB = "rgba(57,255,20,0.06)";
-
-const PRO_PRICE_ID = "price_1T400sD5N371MurQHNx4RoT6";
-
-const FREE_FEATURES = [
-  "5 scans / day",
-  "Unlimited collection",
-  "Basic achievements",
-  "Top 1 identification result",
-];
-
-const PRO_FEATURES = [
-  "Scans illimités par jour",
-  "Top 3 alternatives d'identification",
-  "Intel complet (comestibilité, médecine)",
-  "Défis hebdomadaires exclusifs",
-  "Badges & titres saisonniers exclusifs",
-  "Sans publicité",
-];
+import { Check, ExternalLink, RefreshCw, Shield, Sparkles } from "lucide-react";
+import PageIntro from "@/components/shared/PageIntro";
+import NoticePanel from "@/components/shared/NoticePanel";
+import { usePremium } from "@/lib/PremiumContext";
+import {
+  PREMIUM_PLAN_NAME,
+  formatPremiumDate,
+  getPremiumHeroFeatures,
+} from "@/lib/premiumConfig";
 
 export default function Pricing() {
-  const [loading, setLoading] = useState(false);
-  const [billing, setBilling] = useState("monthly");
+  const {
+    packages,
+    isAvailable,
+    isLoading,
+    isPurchasing,
+    isRestoring,
+    isRefreshing,
+    supportsPurchases,
+    isPremium,
+    subscriptionStatus,
+    purchasePackage,
+    restorePurchases,
+    refreshSubscription,
+    openManageSubscriptions,
+    error,
+  } = usePremium();
 
-  const handleUpgrade = async () => {
-    const isInIframe = window.self !== window.top;
-    if (isInIframe) {
-      alert("Payment only works from the published app. Open the app in a new tab.");
+  const [notice, setNotice] = useState(null);
+  const heroFeatures = getPremiumHeroFeatures();
+  const renewalDate = formatPremiumDate(subscriptionStatus?.expirationDate);
+
+  const handlePurchase = async (pkg) => {
+    const result = await purchasePackage(pkg?.raw);
+    if (result?.ok) {
+      setNotice({
+        tone: "success",
+        label: "Abonnement actif",
+        message: `${PREMIUM_PLAN_NAME} est maintenant disponible sur cet iPhone.`,
+      });
       return;
     }
-    // TODO: créer /api/create-checkout.js (Vercel + stripe-node) avec priceId: PRO_PRICE_ID
-    // et rediriger vers res.data.url (Stripe Checkout session)
-    alert("Paiement non disponible pour l'instant.");
+
+    if (result?.status === "cancelled") {
+      setNotice({
+        tone: "info",
+        label: "Aucun achat lancé",
+        message: result.message,
+      });
+      return;
+    }
+
+    setNotice({
+      tone: result?.status === "pending" ? "warning" : "error",
+      label: result?.status === "pending" ? "Achat en attente" : "Achat interrompu",
+      message: result?.message || "Impossible de finaliser l'abonnement pour le moment.",
+    });
+  };
+
+  const handleRestore = async () => {
+    const result = await restorePurchases();
+
+    if (result?.ok && result.status === "restored") {
+      setNotice({
+        tone: "success",
+        label: "Achats restaurés",
+        message: `${PREMIUM_PLAN_NAME} est de nouveau disponible sur cet iPhone.`,
+      });
+      return;
+    }
+
+    if (result?.ok && result.status === "no_purchases") {
+      setNotice({
+        tone: "info",
+        label: "Aucun achat à restaurer",
+        message: "Aucun abonnement App Store actif n'a été retrouvé pour cet identifiant Apple.",
+      });
+      return;
+    }
+
+    setNotice({
+      tone: "error",
+      label: "Restauration interrompue",
+      message: result?.message || "Impossible de restaurer les achats pour le moment.",
+    });
+  };
+
+  const handleManage = async () => {
+    try {
+      await openManageSubscriptions();
+    } catch {
+      setNotice({
+        tone: "error",
+        label: "Gestion indisponible",
+        message: "Impossible d'ouvrir la gestion de l'abonnement pour le moment.",
+      });
+    }
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "#050A05", color: "#E8E0D0" }}>
+    <div className="min-h-screen" style={{ background: "var(--v1v-bg)", color: "var(--v1v-fg)" }}>
+      <div
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 55% 40% at 10% 0%, rgba(63,163,77,0.08) 0%, transparent 65%), radial-gradient(ellipse 50% 35% at 100% 10%, rgba(21,101,192,0.08) 0%, transparent 70%)",
+        }}
+      />
 
-      {/* Scanlines */}
-      <div className="pointer-events-none fixed inset-0 z-0" style={{
-        backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(57,255,20,0.012) 2px, rgba(57,255,20,0.012) 4px)",
-      }} />
-      <div className="pointer-events-none fixed top-0 left-1/2 -translate-x-1/2 w-80 h-80 z-0" style={{
-        background: "radial-gradient(ellipse at top, rgba(57,255,20,0.08) 0%, transparent 70%)"
-      }} />
+      <div className="relative z-10 px-5 pb-10">
+        <PageIntro
+          kicker="Abonnement App Store"
+          title={PREMIUM_PLAN_NAME}
+          subtitle="Une formule claire, gérée par Apple, pour documenter davantage et ouvrir les fiches avancées sans friction."
+          rightSlot={
+            isRefreshing ? (
+              <span className="v1v-pill">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                Sync
+              </span>
+            ) : null
+          }
+        />
 
-      <div className="relative z-10 px-5 pt-12 pb-12">
-        {/* Back */}
-        <Link to={createPageUrl("Home")} className="flex items-center gap-2 mb-8 transition-opacity hover:opacity-60" style={{ color: "rgba(57,255,20,0.5)" }}>
-          <ArrowLeft className="w-4 h-4" />
-          <span className="text-[9px] font-black uppercase tracking-[0.4em]">Back</span>
-        </Link>
+        {notice && (
+          <NoticePanel
+            className="mb-5"
+            icon={notice.tone === "success" ? Sparkles : Shield}
+            tone={notice.tone}
+            label={notice.label}
+            message={notice.message}
+            dismiss={(
+              <button
+                onClick={() => setNotice(null)}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center"
+                style={{ color: "var(--v1v-fg-faint)" }}
+                aria-label="Fermer le message premium"
+              >
+                ×
+              </button>
+            )}
+          />
+        )}
 
-        {/* Title */}
-        <div className="text-center mb-8">
-          <Zap className="w-10 h-10 mx-auto mb-3" style={{ color: G, filter: `drop-shadow(0 0 10px ${G})` }} />
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: G, boxShadow: `0 0 6px ${G}` }} />
-            <p className="text-[8px] tracking-[0.6em] uppercase font-black" style={{ color: "rgba(57,255,20,0.5)" }}>Unlock Elite Access</p>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: G, boxShadow: `0 0 6px ${G}` }} />
+        {error && !notice && (
+          <NoticePanel
+            className="mb-5"
+            icon={Shield}
+            tone="warning"
+            label="Connexion abonnement"
+            message={error}
+          />
+        )}
+
+        <div className="v1v-surface-card mb-5 p-5" style={{ borderColor: "rgba(63,163,77,0.2)" }}>
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[0.28em] mb-1" style={{ color: "var(--v1v-green-faint)" }}>
+                Ce que débloque {PREMIUM_PLAN_NAME}
+              </p>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>
+                Une couche plus confortable pour les sessions terrain intensives, sans changer l'esprit du produit.
+              </p>
+            </div>
+            <div
+              className="flex h-11 w-11 items-center justify-center rounded-[14px]"
+              style={{ background: "var(--v1v-green-bg-subtle)", border: "1px solid var(--v1v-green-ghost)" }}
+            >
+              <Sparkles className="w-4 h-4" style={{ color: "var(--v1v-green)" }} />
+            </div>
           </div>
-          <h1 className="text-4xl font-black uppercase" style={{ color: G, textShadow: `0 0 30px rgba(57,255,20,0.5)` }}>
-            W1LD Elite
-          </h1>
-          <p className="text-sm mt-2" style={{ color: "rgba(57,255,20,0.4)" }}>Explore without limits</p>
+          <div className="space-y-3">
+            {heroFeatures.map((feature) => (
+              <div key={feature} className="flex items-start gap-2">
+                <Check className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--v1v-green)" }} />
+                <p className="text-[13px] leading-relaxed" style={{ color: "var(--v1v-fg)" }}>{feature}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Price card */}
-        <div
-          className="p-6 mb-6 text-center relative overflow-hidden"
-          style={{ border: `1px solid ${G}`, background: GDB, boxShadow: `0 0 40px rgba(57,255,20,0.15), inset 0 0 40px rgba(57,255,20,0.03)` }}
-        >
-          {/* Corner brackets */}
-          <span className="absolute top-2 left-2 w-4 h-4 border-t border-l" style={{ borderColor: G }} />
-          <span className="absolute top-2 right-2 w-4 h-4 border-t border-r" style={{ borderColor: G }} />
-          <span className="absolute bottom-2 left-2 w-4 h-4 border-b border-l" style={{ borderColor: G }} />
-          <span className="absolute bottom-2 right-2 w-4 h-4 border-b border-r" style={{ borderColor: G }} />
-
-          {/* Monthly / Annual toggle */}
-          <div className="flex justify-center gap-2 mb-4">
-            <button
-              onClick={() => setBilling("monthly")}
-              className="px-4 py-1.5 text-[9px] font-black uppercase tracking-wider transition-all"
-              style={{ background: billing === "monthly" ? G : "transparent", color: billing === "monthly" ? "#050A05" : "rgba(57,255,20,0.5)", border: `1px solid ${G}` }}
-            >
-              Mensuel
-            </button>
-            <button
-              onClick={() => setBilling("annual")}
-              className="px-4 py-1.5 text-[9px] font-black uppercase tracking-wider transition-all"
-              style={{ background: billing === "annual" ? G : "transparent", color: billing === "annual" ? "#050A05" : "rgba(57,255,20,0.5)", border: `1px solid ${G}` }}
-            >
-              Annuel
-            </button>
-          </div>
-
-          <div className="flex items-baseline justify-center gap-1 mb-1">
-            <span className="text-6xl font-black" style={{ color: G, textShadow: `0 0 20px ${G}` }}>
-              {billing === "annual" ? "39€" : "5€"}
-            </span>
-            <span className="text-sm" style={{ color: "rgba(57,255,20,0.4)" }}>
-              {billing === "annual" ? "/an" : "/mois"}
-            </span>
-          </div>
-          {billing === "annual" && (
-            <p className="text-[9px] uppercase tracking-widest mb-2" style={{ color: G }}>
-              🎉 Économise 21€
+        {isPremium ? (
+          <div className="v1v-surface-card mb-5 p-5" style={{ background: "var(--v1v-green-bg-subtle)", borderColor: "rgba(63,163,77,0.24)" }}>
+            <p className="text-[9px] font-black uppercase tracking-[0.28em] mb-2" style={{ color: "var(--v1v-green-faint)" }}>
+              Abonnement actif
             </p>
-          )}
-          <p className="text-[9px] uppercase tracking-widest mb-6" style={{ color: "rgba(57,255,20,0.3)" }}>
-            Sans engagement · Annulable à tout moment
-          </p>
-          <button
-            onClick={handleUpgrade}
-            disabled={loading}
-            className="w-full py-5 text-base font-black uppercase tracking-[0.4em] transition-all disabled:opacity-60"
-            style={{ background: G, color: "#050A05", boxShadow: `0 0 30px rgba(57,255,20,0.5)` }}
-          >
-            {loading ? "Loading..." : "Activate Elite →"}
-          </button>
-        </div>
-
-        {/* Features comparison */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <div className="p-4" style={{ border: `1px solid rgba(57,255,20,0.12)`, background: "rgba(57,255,20,0.03)" }}>
-            <h3 className="font-black text-[9px] uppercase tracking-[0.3em] mb-3 flex items-center gap-2" style={{ color: "rgba(57,255,20,0.4)" }}>
-              <Shield className="w-3.5 h-3.5" /> Free
-            </h3>
-            <div className="space-y-2">
-              {FREE_FEATURES.map((f, i) => (
-                <div key={i} className="flex items-start gap-2 text-[10px]" style={{ color: "rgba(232,224,208,0.5)" }}>
-                  <Check className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: "rgba(57,255,20,0.3)" }} />
-                  <span>{f}</span>
-                </div>
-              ))}
+            <h2 className="text-xl font-black uppercase mb-2" style={{ color: "var(--v1v-fg)" }}>
+              {PREMIUM_PLAN_NAME} est en place
+            </h2>
+            <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--v1v-fg-muted)" }}>
+              {renewalDate
+                ? subscriptionStatus?.willRenew
+                  ? `Renouvellement géré par Apple. Prochaine échéance estimée: ${renewalDate}.`
+                  : `L'accès premium reste disponible jusqu'au ${renewalDate}.`
+                : "Ton accès premium est bien reconnu sur cet appareil."}
+            </p>
+            <div className="grid grid-cols-1 gap-3">
+              <button
+                onClick={handleManage}
+                className="v1v-button-primary w-full"
+              >
+                Gérer l'abonnement
+              </button>
+              <button
+                onClick={handleRestore}
+                disabled={isRestoring}
+                className="v1v-button-secondary w-full disabled:opacity-50"
+              >
+                {isRestoring ? "Restauration..." : "Restaurer les achats"}
+              </button>
             </div>
           </div>
+        ) : null}
 
-          <div className="p-4 relative" style={{ border: `1px solid ${G}`, background: GDB, boxShadow: `0 0 15px rgba(57,255,20,0.1)` }}>
-            <h3 className="font-black text-[9px] uppercase tracking-[0.3em] mb-3 flex items-center gap-2" style={{ color: G }}>
-              <Zap className="w-3.5 h-3.5" /> Elite
-            </h3>
-            <div className="space-y-2">
-              {PRO_FEATURES.map((f, i) => (
-                <div key={i} className="flex items-start gap-2 text-[10px]" style={{ color: "rgba(232,224,208,0.75)" }}>
-                  <Check className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: G }} />
-                  <span>{f}</span>
+        {!isAvailable && (
+          <NoticePanel
+            className="mb-5"
+            icon={Shield}
+            tone="info"
+            label="Disponible dans l'app iPhone"
+            message={`${PREMIUM_PLAN_NAME} s'achète directement via l'App Store dans la version iPhone native.`}
+          />
+        )}
+
+        {isAvailable && !supportsPurchases && (
+          <NoticePanel
+            className="mb-5"
+            icon={Shield}
+            tone="warning"
+            label="Achats désactivés"
+            message="Cet iPhone ne peut pas lancer d'achats intégrés pour le moment. Vérifie le contrôle parental ou le compte App Store."
+          />
+        )}
+
+        {isAvailable && !isPremium && (
+          <div className="space-y-4">
+            {isLoading ? (
+              <div className="v1v-surface-card p-5">
+                <p className="text-[9px] font-black uppercase tracking-[0.28em] mb-3" style={{ color: "var(--v1v-green-faint)" }}>
+                  Chargement des offres App Store
+                </p>
+                <div className="space-y-3">
+                  <div className="h-12 rounded-[14px]" style={{ background: "var(--v1v-green-bg-subtle)", animation: "skeletonPulse 1.4s ease-in-out infinite" }} />
+                  <div className="h-12 rounded-[14px]" style={{ background: "var(--v1v-green-bg-subtle)", animation: "skeletonPulse 1.4s ease-in-out infinite 120ms" }} />
                 </div>
-              ))}
+              </div>
+            ) : packages.length === 0 ? (
+              <NoticePanel
+                icon={Shield}
+                tone="warning"
+                label="Offres indisponibles"
+                message="Aucune offre App Store n'est remontée pour le moment. Vérifie la configuration RevenueCat et App Store Connect."
+                action={(
+                  <button
+                    onClick={() => refreshSubscription()}
+                    className="shrink-0 rounded-[14px] px-3 py-3 text-[9px] font-black uppercase tracking-[0.24em]"
+                    style={{ background: "#E87A00", color: "#081008" }}
+                  >
+                    Réessayer
+                  </button>
+                )}
+              />
+            ) : (
+              <div className="space-y-3">
+                {packages.map((pkg, index) => (
+                  <div
+                    key={pkg.id}
+                    className="v1v-surface-card p-5"
+                    style={{
+                      borderColor: index === 0 ? "rgba(63,163,77,0.28)" : "rgba(255,255,255,0.06)",
+                      background: index === 0 ? "var(--v1v-green-bg-subtle)" : "var(--v1v-surface-1)",
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.28em] mb-1" style={{ color: "var(--v1v-green-faint)" }}>
+                          {pkg.label}
+                        </p>
+                        <p className="text-sm leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>
+                          {pkg.caption}
+                        </p>
+                      </div>
+                      {index === 0 ? (
+                        <span
+                          className="px-2 py-1 text-[8px] font-black uppercase tracking-[0.22em]"
+                          style={{ background: "var(--v1v-green)", color: "#081008", borderRadius: 999 }}
+                        >
+                          Recommandé
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="flex items-baseline gap-2 mb-4">
+                      <p className="text-3xl font-black uppercase" style={{ color: "var(--v1v-fg)" }}>
+                        {pkg.price || "Prix App Store"}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => handlePurchase(pkg)}
+                      disabled={isPurchasing || !supportsPurchases}
+                      className="v1v-button-primary w-full disabled:opacity-50"
+                    >
+                      {isPurchasing ? "Achat en cours..." : "Continuer avec l'App Store"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={handleRestore}
+                disabled={isRestoring}
+                className="v1v-button-secondary w-full disabled:opacity-50"
+              >
+                {isRestoring ? "Restauration..." : "Restaurer"}
+              </button>
+              <button
+                onClick={() => refreshSubscription()}
+                disabled={isRefreshing}
+                className="v1v-button-secondary w-full disabled:opacity-50"
+              >
+                {isRefreshing ? "Actualisation..." : "Actualiser"}
+              </button>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Social proof */}
-        <div className="p-4" style={{ border: `1px solid rgba(57,255,20,0.1)`, background: GDB }}>
-          <div className="flex gap-1 mb-2">
-            {[1,2,3,4,5].map(i => <Star key={i} className="w-3.5 h-3.5" style={{ color: G, fill: G }} />)}
+        <div className="v1v-surface-card-soft mt-5 p-4">
+          <div className="flex items-start gap-3">
+            <Shield className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--v1v-blue)" }} />
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[0.28em] mb-2" style={{ color: "var(--v1v-blue)" }}>
+                Transparence
+              </p>
+              <p className="text-[11px] leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>
+                Paiement, renouvellement et annulation sont gérés par Apple. Tu peux restaurer un achat existant ou ouvrir la gestion de l'abonnement à tout moment.
+              </p>
+              <button
+                onClick={handleManage}
+                className="mt-3 inline-flex min-h-[44px] items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em]"
+                style={{ color: "var(--v1v-blue)" }}
+              >
+                Gérer via Apple
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
-          <p className="text-sm italic mb-2" style={{ color: "rgba(232,224,208,0.6)" }}>
-            "W1LD a complètement changé mon rapport à la nature. J'identifie maintenant chaque espèce que je croise."
-          </p>
-          <p className="text-[9px] uppercase tracking-widest" style={{ color: "rgba(57,255,20,0.3)" }}>— Marie L., Field Expert</p>
         </div>
       </div>
     </div>

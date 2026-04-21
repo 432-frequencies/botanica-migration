@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import QRCode from "qrcode";
+import { useTranslation } from "@/lib/i18n";
 
 const RARITY = {
   commune: {
@@ -42,6 +44,14 @@ const RARITY = {
     stars: true,
     particles: true,
   },
+};
+
+const W1LD_LOGO_SRC = "/icons/w1ld-icon-512.png";
+const RARITY_LABEL_KEYS = {
+  commune: "result.rarityCommune",
+  peu_commune: "result.rarityPeuCommune",
+  rare: "result.rarityRare",
+  legendaire: "result.rarityLegendaire",
 };
 
 // Inline star background for rare/legendary
@@ -108,18 +118,19 @@ function GoldParticles({ count = 24 }) {
 }
 
 // The actual card DOM (rendered offscreen for html2canvas)
-export function ShareCardDOM({ data, format, qrDataUrl, cardRef }) {
+export function ShareCardDOM({ data, format, qrDataUrl, cardRef, t, language }) {
   const cfg = RARITY[data.rarity] || RARITY.commune;
+  const rarityLabel = t ? t(RARITY_LABEL_KEYS[data.rarity] || "result.rarityCommune") : cfg.label;
   const isStory = format === "story";
   const W = 1080;
   const H = isStory ? 1920 : 1080;
-  const SCALE = isStory ? 0.28 : 0.31; // visual preview scale
 
-  const photoHeight = isStory ? H * 0.48 : H * 0.58;
+  const photoHeight = isStory ? H * 0.52 : H * 0.55;
+  const qrSize = isStory ? 210 : 168;
 
   return (
     <div
-      ref={cardRef}
+      ref={cardRef || undefined}
       style={{
         width: W,
         height: H,
@@ -129,8 +140,6 @@ export function ShareCardDOM({ data, format, qrDataUrl, cardRef }) {
         boxShadow: cfg.glow,
         border: cfg.border,
         fontFamily: "'Montserrat', 'Inter', sans-serif",
-        transform: `scale(${SCALE})`,
-        transformOrigin: "top left",
         flexShrink: 0,
       }}
     >
@@ -139,14 +148,50 @@ export function ShareCardDOM({ data, format, qrDataUrl, cardRef }) {
       {cfg.particles && <GoldParticles count={30} />}
 
       {/* Photo zone */}
-      <div style={{ position: "relative", width: "100%", height: photoHeight }}>
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: photoHeight,
+          background: "#050805",
+          overflow: "hidden",
+        }}
+      >
         {data.photo_url ? (
-          <img
-            src={data.photo_url}
-            alt={data.common_name}
-            crossOrigin="anonymous"
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-          />
+          <>
+            <img
+              src={data.photo_url}
+              alt=""
+              aria-hidden="true"
+              crossOrigin="anonymous"
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                filter: "blur(34px) brightness(0.52) saturate(1.18)",
+                transform: "scale(1.12)",
+                opacity: 0.9,
+              }}
+            />
+            <img
+              src={data.photo_url}
+              alt={data.common_name}
+              crossOrigin="anonymous"
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                objectPosition: "center",
+                display: "block",
+                padding: isStory ? 58 : 36,
+                filter: "drop-shadow(0 26px 70px rgba(0,0,0,0.42))",
+              }}
+            />
+          </>
         ) : (
           <div style={{ width: "100%", height: "100%", background: "rgba(255,255,255,0.04)" }} />
         )}
@@ -157,17 +202,35 @@ export function ShareCardDOM({ data, format, qrDataUrl, cardRef }) {
             bottom: 0,
             left: 0,
             right: 0,
-            height: "55%",
-            background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, transparent 100%)",
+            height: "62%",
+            background: "linear-gradient(to top, rgba(4,8,4,0.96) 0%, rgba(4,8,4,0.54) 42%, transparent 100%)",
           }}
         />
+
+        <div
+          style={{
+            position: "absolute",
+            top: 42,
+            right: 42,
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            padding: "14px 20px",
+            background: "rgba(0,0,0,0.42)",
+            border: "1px solid rgba(255,255,255,0.14)",
+            backdropFilter: "blur(12px)",
+          }}
+        >
+          <img src={W1LD_LOGO_SRC} alt="" crossOrigin="anonymous" style={{ width: 50, height: 50, objectFit: "contain" }} />
+          <div style={{ fontSize: 28, fontWeight: 900, color: "#DDF9E1", letterSpacing: "0.22em" }}>W1LD</div>
+        </div>
 
         {/* Rarity badge top-left */}
         <div
           style={{
             position: "absolute",
-            top: 48,
-            left: 48,
+            top: 42,
+            left: 42,
             padding: "10px 24px",
             background: cfg.badgeBg,
             border: `1px solid ${cfg.badgeColor}`,
@@ -180,7 +243,7 @@ export function ShareCardDOM({ data, format, qrDataUrl, cardRef }) {
             animation: data.rarity === "rare" || data.rarity === "legendaire" ? "shimmer 2s infinite" : "none",
           }}
         >
-          {cfg.label}
+          {rarityLabel}
         </div>
 
         {/* Audio badge top-right */}
@@ -188,8 +251,8 @@ export function ShareCardDOM({ data, format, qrDataUrl, cardRef }) {
           <div
             style={{
               position: "absolute",
-              top: 48,
-              right: 48,
+              top: 126,
+              right: 42,
               padding: "10px 20px",
               background: "rgba(0,0,0,0.5)",
               border: "1px solid rgba(255,255,255,0.2)",
@@ -206,17 +269,24 @@ export function ShareCardDOM({ data, format, qrDataUrl, cardRef }) {
       </div>
 
       {/* Content zone */}
-      <div style={{ padding: "48px 60px 32px", flex: 1 }}>
+      <div
+        style={{
+          padding: isStory ? "62px 68px 46px" : "42px 56px 34px",
+          flex: 1,
+          background:
+            "radial-gradient(circle at 8% 10%, rgba(57,184,20,0.16), transparent 32%), linear-gradient(180deg, rgba(4,10,5,0.92), rgba(1,3,2,0.98))",
+        }}
+      >
         {/* Species names */}
-        <div style={{ marginBottom: 48 }}>
+        <div style={{ marginBottom: isStory ? 70 : 34 }}>
           <h1
             style={{
-              fontSize: 72,
+              fontSize: isStory ? 82 : 66,
               fontWeight: 900,
               color: data.rarity === "legendaire" ? "#FFD700" : "#ffffff",
               textTransform: "uppercase",
               letterSpacing: "0.04em",
-              lineHeight: 1.05,
+              lineHeight: 0.98,
               margin: 0,
               textShadow: data.rarity === "legendaire" ? "0 0 40px rgba(255,215,0,0.4)" : "none",
             }}
@@ -225,7 +295,7 @@ export function ShareCardDOM({ data, format, qrDataUrl, cardRef }) {
           </h1>
           <p
             style={{
-              fontSize: 32,
+              fontSize: isStory ? 36 : 28,
               fontStyle: "italic",
               color: "rgba(255,255,255,0.55)",
               marginTop: 16,
@@ -241,7 +311,7 @@ export function ShareCardDOM({ data, format, qrDataUrl, cardRef }) {
           style={{
             display: "flex",
             gap: 24,
-            marginBottom: 48,
+            marginBottom: isStory ? 72 : 36,
           }}
         >
           {/* XP */}
@@ -249,8 +319,9 @@ export function ShareCardDOM({ data, format, qrDataUrl, cardRef }) {
             style={{
               flex: 1,
               padding: "24px",
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.1)",
+              background: "rgba(255,255,255,0.055)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              borderRadius: 28,
               textAlign: "center",
             }}
           >
@@ -270,6 +341,7 @@ export function ShareCardDOM({ data, format, qrDataUrl, cardRef }) {
                 padding: "24px",
                 background: "rgba(255,255,255,0.06)",
                 border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 28,
                 textAlign: "center",
               }}
             >
@@ -277,7 +349,7 @@ export function ShareCardDOM({ data, format, qrDataUrl, cardRef }) {
                 {data.discovery_rank}
               </div>
               <div style={{ fontSize: 20, color: "rgba(255,255,255,0.4)", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 8 }}>
-                Découvreur mondial
+                {t ? t("result.worldDiscoverer") : "Découvreur mondial"}
               </div>
             </div>
           )}
@@ -290,6 +362,7 @@ export function ShareCardDOM({ data, format, qrDataUrl, cardRef }) {
                 padding: "24px",
                 background: "rgba(255,215,0,0.08)",
                 border: "1px solid rgba(255,215,0,0.25)",
+                borderRadius: 28,
                 textAlign: "center",
               }}
             >
@@ -304,26 +377,53 @@ export function ShareCardDOM({ data, format, qrDataUrl, cardRef }) {
         </div>
 
         {/* Footer */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ fontSize: 44, fontWeight: 900, color: "#39B814", letterSpacing: "0.25em", textTransform: "uppercase" }}>
-              W1LD
-            </div>
-            <div style={{ fontSize: 20, color: "rgba(255,255,255,0.35)", letterSpacing: "0.25em", marginTop: 4 }}>
-              Découvert via W1LD · {data.date || new Date().toLocaleDateString("fr-FR")}
-            </div>
-            {data.user_name && (
-              <div style={{ fontSize: 20, color: "rgba(255,255,255,0.25)", letterSpacing: "0.15em", marginTop: 4 }}>
-                par {data.user_name}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 36 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 22, minWidth: 0 }}>
+            <img
+              src={W1LD_LOGO_SRC}
+              alt="W1LD"
+              crossOrigin="anonymous"
+              style={{
+                width: isStory ? 90 : 76,
+                height: isStory ? 90 : 76,
+                objectFit: "contain",
+                filter: "drop-shadow(0 0 26px rgba(57,184,20,0.32))",
+              }}
+            />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: isStory ? 46 : 38, fontWeight: 900, color: "#9DFFB0", letterSpacing: "0.22em", textTransform: "uppercase" }}>
+                W1LD
               </div>
-            )}
+              <div style={{ fontSize: isStory ? 22 : 18, color: "rgba(255,255,255,0.45)", letterSpacing: "0.18em", marginTop: 6 }}>
+                {t ? t("result.discoveredVia") : "Découvert via W1LD"} · {data.date || new Date().toLocaleDateString(language === "en" ? "en-US" : "fr-FR")}
+              </div>
+              {data.user_name && (
+                <div style={{ fontSize: isStory ? 22 : 18, color: "rgba(255,255,255,0.3)", letterSpacing: "0.12em", marginTop: 6 }}>
+                  {t ? t("result.byUser", { name: data.user_name }) : `par ${data.user_name}`}
+                </div>
+              )}
+            </div>
           </div>
           {qrDataUrl && (
-            <img
-              src={qrDataUrl}
-              alt="QR"
-              style={{ width: 96, height: 96, opacity: 0.6 }}
-            />
+            <div
+              style={{
+                width: qrSize + 26,
+                height: qrSize + 26,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(255,255,255,0.08)",
+                border: "1px solid rgba(255,255,255,0.16)",
+                borderRadius: 28,
+                flexShrink: 0,
+              }}
+            >
+              <img
+                src={qrDataUrl}
+                alt="QR"
+                style={{ width: qrSize, height: qrSize, opacity: 0.94 }}
+              />
+            </div>
           )}
         </div>
       </div>
@@ -359,10 +459,13 @@ export function ShareCardDOM({ data, format, qrDataUrl, cardRef }) {
 
 // Main component — the modal with preview + export buttons
 export default function DiscoveryShareCard({ data, onClose }) {
+  const { language, t } = useTranslation();
   const [format, setFormat] = useState("square"); // "square" | "story"
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [preparedShare, setPreparedShare] = useState(null);
   const cardRef = useRef(null);
 
   const cfg = RARITY[data.rarity] || RARITY.commune;
@@ -373,6 +476,14 @@ export default function DiscoveryShareCard({ data, onClose }) {
       margin: 1,
       color: { dark: "#ffffff", light: "#00000000" },
     }).then(setQrDataUrl).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
   }, []);
 
   const getCanvas = async () => {
@@ -389,42 +500,133 @@ export default function DiscoveryShareCard({ data, onClose }) {
     });
   };
 
+  const getFilename = () => `w1ld-${data.common_name?.replace(/\s+/g, "-").toLowerCase()}-${format}.png`;
+
+  const getBlob = async () => {
+    const canvas = await getCanvas();
+    return await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    let timeoutId = null;
+
+    timeoutId = window.setTimeout(async () => {
+      try {
+        const blob = await getBlob();
+        if (cancelled || !blob) return;
+
+        const file = new File([blob], getFilename(), { type: "image/png" });
+        const url = URL.createObjectURL(blob);
+
+        setPreparedShare((prev) => {
+          if (prev?.url) URL.revokeObjectURL(prev.url);
+          return { blob, file, url };
+        });
+      } catch {
+        if (!cancelled) {
+          setPreparedShare((prev) => {
+            if (prev?.url) URL.revokeObjectURL(prev.url);
+            return null;
+          });
+        }
+      }
+    }, 120);
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, [data.common_name, data.photo_url, data.rarity, data.scientific_name, data.user_name, format, qrDataUrl]);
+
+  useEffect(() => () => {
+    if (preparedShare?.url) URL.revokeObjectURL(preparedShare.url);
+  }, [preparedShare?.url]);
+
   const handleDownload = async () => {
     setExporting(true);
-    const canvas = await getCanvas();
-    const link = document.createElement("a");
-    link.download = `w1ld-${data.common_name?.replace(/\s+/g, "-").toLowerCase()}-${format}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-    setExporting(false);
+    try {
+      const link = document.createElement("a");
+      link.download = getFilename();
+      if (preparedShare?.url) {
+        link.href = preparedShare.url;
+      } else {
+        const canvas = await getCanvas();
+        link.href = canvas.toDataURL("image/png");
+      }
+      link.click();
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleCopy = async () => {
     setCopying(true);
-    const canvas = await getCanvas();
-    canvas.toBlob(async (blob) => {
+    try {
+      const blob = preparedShare?.blob || await getBlob();
+      if (!blob) throw new Error("blob_missing");
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    } finally {
       setCopying(false);
-    });
+    }
+  };
+
+  const handleShare = async () => {
+    setSharing(true);
+    try {
+      const file = preparedShare?.file || null;
+
+      if (navigator.share && file && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: `W1LD • ${data.common_name}`,
+          text: `${data.common_name} • ${data.scientific_name || "Signal terrain"}`,
+          files: [file],
+        });
+        return;
+      }
+
+      if (navigator.share) {
+        await navigator.share({
+          title: `W1LD • ${data.common_name}`,
+          text: `${data.common_name} • ${data.scientific_name || "Signal terrain"}`,
+          url: "https://w1ld.app",
+        });
+        return;
+      }
+
+      await handleDownload();
+    } catch (error) {
+      if (error?.name !== "AbortError") {
+        await handleDownload();
+      }
+    } finally {
+      setSharing(false);
+    }
   };
 
   const isStory = format === "story";
   const CARD_W = isStory ? 1080 : 1080;
   const CARD_H = isStory ? 1920 : 1080;
-  const SCALE = isStory ? 0.28 : 0.31;
+  const SCALE = isStory ? 0.2 : 0.29;
   const previewW = Math.round(CARD_W * SCALE);
   const previewH = Math.round(CARD_H * SCALE);
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex flex-col items-center justify-end"
-      style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(12px)" }}
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-end overflow-y-auto"
+      style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(12px)", overscrollBehavior: "contain" }}
+      onClick={onClose}
     >
+      <div
+        className="w-full max-w-md mx-auto"
+        onClick={(event) => event.stopPropagation()}
+        style={{ touchAction: "manipulation", paddingTop: 24 }}
+      >
       {/* Header */}
-      <div className="w-full max-w-md flex items-center justify-between px-5 pt-5 pb-3">
+      <div className="w-full flex items-center justify-between px-5 pt-5 pb-3">
         <div>
           <p className="text-[8px] tracking-[0.5em] uppercase" style={{ color: "rgba(255,255,255,0.35)" }}>W1LD</p>
-          <p className="text-sm font-black uppercase tracking-wider" style={{ color: "#fff" }}>Partager ma découverte</p>
+          <p className="text-sm font-black uppercase tracking-wider" style={{ color: "#fff" }}>{t("result.shareTitle")}</p>
         </div>
         <button onClick={onClose} className="text-white opacity-40 hover:opacity-70 text-xl font-bold">✕</button>
       </div>
@@ -442,12 +644,12 @@ export default function DiscoveryShareCard({ data, onClose }) {
               border: format === f ? "none" : "1px solid rgba(255,255,255,0.1)",
             }}
           >
-            {f === "square" ? "Carré" : "Story"}
+            {f === "square" ? t("result.shareSquare") : t("result.shareStory")}
           </button>
         ))}
       </div>
 
-      {/* Card preview — offscreen rendering container */}
+      {/* Card preview — the export DOM stays full-size, only the preview wrapper scales it. */}
       <div
         style={{
           width: previewW,
@@ -460,26 +662,67 @@ export default function DiscoveryShareCard({ data, onClose }) {
           boxShadow: "0 20px 80px rgba(0,0,0,0.6)",
         }}
       >
-        {/* The actual DOM card (sized at full 1080px, scaled down visually) */}
-        <div style={{ position: "absolute", top: 0, left: 0, width: CARD_W, height: CARD_H, pointerEvents: "none" }}>
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: CARD_W,
+            height: CARD_H,
+            pointerEvents: "none",
+            transform: `scale(${SCALE})`,
+            transformOrigin: "top left",
+          }}
+        >
           <ShareCardDOM
             data={data}
             format={format}
             qrDataUrl={qrDataUrl}
-            cardRef={cardRef}
+            cardRef={null}
+            t={t}
+            language={language}
           />
         </div>
       </div>
 
+      <div
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: -12000,
+          width: CARD_W,
+          height: CARD_H,
+          pointerEvents: "none",
+        }}
+      >
+        <ShareCardDOM
+          data={data}
+          format={format}
+          qrDataUrl={qrDataUrl}
+          cardRef={cardRef}
+          t={t}
+          language={language}
+        />
+      </div>
+
       {/* Actions */}
-      <div className="w-full max-w-md px-5 pb-8 space-y-3">
+      <div className="w-full px-5 pb-8 space-y-3">
+        <button
+          onClick={handleShare}
+          disabled={sharing}
+          className="w-full py-4 font-black uppercase text-sm tracking-[0.3em] transition-all disabled:opacity-40"
+          style={{ background: "var(--v1v-green)", color: "#000" }}
+        >
+          {sharing ? t("result.sharing") : preparedShare?.file ? t("result.shareNow") : t("result.preparingShare")}
+        </button>
         <button
           onClick={handleDownload}
           disabled={exporting}
           className="w-full py-4 font-black uppercase text-sm tracking-[0.3em] transition-all disabled:opacity-40"
-          style={{ background: cfg.badgeColor === "#FFD700" ? "#FFD700" : "var(--v1v-green)", color: "#000" }}
+          style={{ background: cfg.badgeColor === "#FFD700" ? "#FFD700" : "rgba(255,255,255,0.08)", color: cfg.badgeColor === "#FFD700" ? "#000" : "#fff", border: cfg.badgeColor === "#FFD700" ? "none" : "1px solid rgba(255,255,255,0.15)" }}
         >
-          {exporting ? "Export en cours..." : "⬇ Télécharger PNG"}
+          {exporting ? t("result.exportingPng") : t("result.downloadPng")}
         </button>
         <button
           onClick={handleCopy}
@@ -487,9 +730,12 @@ export default function DiscoveryShareCard({ data, onClose }) {
           className="w-full py-4 font-black uppercase text-sm tracking-[0.3em] transition-all disabled:opacity-40"
           style={{ background: "rgba(255,255,255,0.08)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" }}
         >
-          {copying ? "Copie..." : "📋 Copier l'image"}
+          {copying ? t("result.copyingImage") : t("result.copyImage")}
         </button>
       </div>
+      </div>
     </div>
+    ,
+    document.body
   );
 }

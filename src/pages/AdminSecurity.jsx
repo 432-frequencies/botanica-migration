@@ -1,69 +1,96 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
+import { createApiUrl } from "@/lib/app-config";
 import { Shield, CheckCircle, X } from 'lucide-react';
+import { useAdminStatus } from '@/hooks/useAdminStatus';
 
 export default function AdminSecurity() {
   const [suspects, setSuspects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, critical, flagged, normal
+  const [error, setError] = useState('');
+  const [busyId, setBusyId] = useState('');
+  const { checking: adminChecking, isAdmin } = useAdminStatus();
 
   useEffect(() => {
+    if (adminChecking) return;
+    if (!isAdmin) {
+      setLoading(false);
+      return;
+    }
+
     const fetchSuspects = async () => {
+      setLoading(true);
+      setError('');
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        // Note: vérification du rôle admin à implémenter via Supabase custom claims
-        if (!user) { setSuspects([]); setLoading(false); return; }
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-        const { data: trustScores } = await supabase
-          .from('user_trust_scores')
-          .select('*')
-          .order('trust_score', { ascending: true })
-          .limit(100);
+        if (!session?.access_token) {
+          throw new Error('Session admin requise.');
+        }
 
-        const filtered = trustScores.filter(ts => {
-          if (filter === 'all') return true;
-          if (filter === 'critical') return ts.trust_score < 30;
-          if (filter === 'flagged') return ts.trust_score >= 30 && ts.trust_score < 70;
-          if (filter === 'normal') return ts.trust_score >= 70;
-          return true;
+        const response = await fetch(createApiUrl('/api/admin-security'), {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
         });
 
-        setSuspects(filtered);
-      } catch (error) {
-        console.error('Error fetching suspects:', error);
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload?.error || 'Impossible de charger les signaux de sécurité');
+        }
+
+        setSuspects(payload.trustScores || []);
+      } catch (nextError) {
+        console.error('Error fetching suspects:', nextError);
+        setError(nextError?.message || 'Impossible de charger les signaux de sécurité');
       } finally {
         setLoading(false);
       }
     };
 
     fetchSuspects();
-  }, [filter]);
+  }, [adminChecking, isAdmin]);
 
-  const handleBlockUser = async (trustId) => {
+  const runAdminAction = async (action, trustId) => {
+    setBusyId(`${action}:${trustId}`);
+    setError('');
     try {
-      await supabase.from('user_trust_scores').update({
-        trust_score: 0,
-        blocked_until: new Date(Date.now() + 86400000).toISOString(),
-      }).eq('id', trustId);
-      setSuspects(s => s.map(su => su.id === trustId ? { ...su, trust_score: 0 } : su));
-    } catch (error) {
-      console.error('Error blocking user:', error);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error('Session admin requise.');
+      }
+
+      const response = await fetch(createApiUrl('/api/admin-security'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ action, trustId }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Impossible d’appliquer cette action');
+      }
+
+      setSuspects(payload.trustScores || []);
+    } catch (nextError) {
+      console.error('Error applying admin action:', nextError);
+      setError(nextError?.message || 'Impossible d’appliquer cette action');
+    } finally {
+      setBusyId('');
     }
   };
 
-  const handleResetScore = async (trustId) => {
-    try {
-      await supabase.from('user_trust_scores').update({
-        trust_score: 100,
-        violations: { speed_anomalies: 0, spam_incidents: 0, farming_attempts: 0, suspicious_patterns: 0 },
-        surveillance_active: false,
-        blocked_until: null,
-      }).eq('id', trustId);
-      setSuspects(s => s.map(su => su.id === trustId ? { ...su, trust_score: 100, violations: { speed_anomalies: 0, spam_incidents: 0, farming_attempts: 0, suspicious_patterns: 0 }, surveillance_active: false } : su));
-    } catch (error) {
-      console.error('Error resetting score:', error);
-    }
-  };
+  const handleBlockUser = (trustId) => runAdminAction('block-user', trustId);
+  const handleResetScore = (trustId) => runAdminAction('reset-score', trustId);
 
   const getRiskColor = (score) => {
     if (score < 10) return 'text-red-500';
@@ -81,10 +108,36 @@ export default function AdminSecurity() {
     return { level: 'NORMAL', color: 'bg-green-900/20 border-green-500/30' };
   };
 
-  if (loading) {
+  const filteredSuspects = useMemo(() => (
+    suspects.filter((ts) => {
+      if (filter === 'all') return true;
+      if (filter === 'critical') return ts.trust_score < 30;
+      if (filter === 'flagged') return ts.trust_score >= 30 && ts.trust_score < 70;
+      if (filter === 'normal') return ts.trust_score >= 70;
+      return true;
+    })
+  ), [filter, suspects]);
+
+  if (adminChecking || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--v1v-bg)' }}>
         <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: 'var(--v1v-green)', borderTopColor: 'transparent' }} />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6" style={{ background: 'var(--v1v-bg)' }}>
+        <div className="max-w-md p-6 text-center" style={{ border: '1px solid rgba(57,255,20,0.15)', background: 'rgba(57,255,20,0.03)' }}>
+          <Shield className="w-8 h-8 mx-auto mb-4" style={{ color: 'rgba(57,255,20,0.45)' }} />
+          <p className="text-xs font-black uppercase tracking-[0.34em] mb-2" style={{ color: 'rgba(57,255,20,0.55)' }}>
+            Console verrouillée
+          </p>
+          <p className="text-sm leading-relaxed" style={{ color: 'rgba(232,224,208,0.68)' }}>
+            Cette vue est réservée à un compte administrateur vérifié côté serveur.
+          </p>
+        </div>
       </div>
     );
   }
@@ -126,13 +179,19 @@ export default function AdminSecurity() {
         </div>
 
         {/* Liste */}
+        {error && (
+          <div className="mb-4 px-4 py-3" style={{ background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.2)', color: '#FF6B6B' }}>
+            {error}
+          </div>
+        )}
+
         <div className="space-y-3">
-          {suspects.length === 0 ? (
+          {filteredSuspects.length === 0 ? (
             <div className="text-center py-8 text-gray-400">
               Aucun utilisateur à afficher
             </div>
           ) : (
-            suspects.map(suspect => {
+            filteredSuspects.map(suspect => {
               const risk = getRiskLevel(suspect.trust_score);
               const violations = suspect.violations || {};
               return (
@@ -210,7 +269,8 @@ export default function AdminSecurity() {
                     {/* Actions */}
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleResetScore(suspect.id, suspect.user_email)}
+                        onClick={() => handleResetScore(suspect.id)}
+                        disabled={busyId === `reset-score:${suspect.id}`}
                         className="p-2 rounded hover:bg-green-900/20 transition"
                         title="Marquer comme légitime"
                       >
@@ -218,6 +278,7 @@ export default function AdminSecurity() {
                       </button>
                       <button
                         onClick={() => handleBlockUser(suspect.id)}
+                        disabled={busyId === `block-user:${suspect.id}`}
                         className="p-2 rounded hover:bg-red-900/20 transition"
                         title="Bloquer"
                       >

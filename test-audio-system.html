@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>W1LD Audio System - Test Page</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0d1b16;
+      color: #eef3ed;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #3fa34d;
+      margin-bottom: 10px;
+      font-size: 24px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    h2 {
+      color: #3fa34d;
+      margin: 30px 0 15px;
+      font-size: 18px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .subtitle {
+      color: rgba(238, 243, 237, 0.64);
+      font-size: 12px;
+      margin-bottom: 30px;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+    }
+
+    .test-section {
+      background: #13231c;
+      border: 1px solid rgba(63, 163, 77, 0.18);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      background: #3fa34d;
+      color: #0d1b16;
+      border: none;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      border-radius: 4px;
+      margin: 5px;
+      transition: transform 0.1s;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+    }
+
+    button:active {
+      transform: scale(0.95);
+    }
+
+    button.secondary {
+      background: transparent;
+      color: #3fa34d;
+      border: 1px solid #3fa34d;
+    }
+
+    .result {
+      background: rgba(63, 163, 77, 0.11);
+      border-left: 3px solid #3fa34d;
+      padding: 15px;
+      margin: 15px 0;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .error {
+      background: rgba(229, 57, 53, 0.11);
+      border-left: 3px solid #e53935;
+      color: #ff7043;
+    }
+
+    .success {
+      color: #3fa34d;
+    }
+
+    .warning {
+      color: #fbc02d;
+    }
+
+    canvas {
+      width: 100%;
+      height: 150px;
+      background: #0d1b16;
+      border: 1px solid rgba(63, 163, 77, 0.18);
+      margin: 15px 0;
+    }
+
+    .info {
+      font-size: 12px;
+      color: rgba(238, 243, 237, 0.64);
+      margin: 10px 0;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #3fa34d;
+      color: #0d1b16;
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin: 0 5px;
+    }
+
+    .badge.error {
+      background: #e53935;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎵 W1LD Audio System Test</h1>
+    <p class="subtitle">Validation du pipeline d'identification sonore</p>
+
+    <!-- Test 1: Browser Support -->
+    <div class="test-section">
+      <h2>1. Support Navigateur</h2>
+      <button onclick="testBrowserSupport()">Tester Support</button>
+      <div id="browser-support-result"></div>
+    </div>
+
+    <!-- Test 2: Environmental Context -->
+    <div class="test-section">
+      <h2>2. Contexte Environnemental</h2>
+      <button onclick="testEnvironmentalContext()">Obtenir Contexte</button>
+      <div id="env-context-result"></div>
+    </div>
+
+    <!-- Test 3: Audio Capture -->
+    <div class="test-section">
+      <h2>3. Capture Audio</h2>
+      <button onclick="startRecording()">🎤 Démarrer Enregistrement</button>
+      <button class="secondary" onclick="stopRecording()">⏹️ Stop</button>
+      <canvas id="waveform"></canvas>
+      <div id="recording-info" class="info"></div>
+    </div>
+
+    <!-- Test 4: FFT Analysis -->
+    <div class="test-section">
+      <h2>4. Analyse Fréquentielle (FFT)</h2>
+      <button onclick="analyzeAudio()">Analyser Audio Enregistré</button>
+      <div id="fft-result"></div>
+    </div>
+
+    <!-- Test 5: Full Pipeline -->
+    <div class="test-section">
+      <h2>5. Pipeline Complet</h2>
+      <p class="info">⚠️ Nécessite authentification Supabase</p>
+      <button onclick="testFullPipeline()">Test Pipeline Complet</button>
+      <div id="pipeline-result"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    // Import our audio utilities
+    import {
+      analyzeFrequencies,
+      processAudioBlob,
+      formatAnalysisForPrompt,
+      FREQUENCY_BANDS
+    } from './src/utils/audioAnalysis.js';
+
+    import {
+      collectEnvironmentalContext,
+      getTimeOfDay,
+      getSeason,
+      getBiogeographicRegion,
+      suggestSoundType,
+      formatContextForPrompt
+    } from './src/utils/audioContext.js';
+
+    // Make functions global for onclick handlers
+    window.analyzeFrequencies = analyzeFrequencies;
+    window.processAudioBlob = processAudioBlob;
+    window.formatAnalysisForPrompt = formatAnalysisForPrompt;
+    window.collectEnvironmentalContext = collectEnvironmentalContext;
+    window.getTimeOfDay = getTimeOfDay;
+    window.getSeason = getSeason;
+    window.getBiogeographicRegion = getBiogeographicRegion;
+    window.suggestSoundType = suggestSoundType;
+    window.formatContextForPrompt = formatContextForPrompt;
+    window.FREQUENCY_BANDS = FREQUENCY_BANDS;
+
+    // Recording state
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let recordedBlob = null;
+    let audioContext = null;
+    let analyser = null;
+    let animationFrame = null;
+
+    window.testBrowserSupport = function() {
+      const resultDiv = document.getElementById('browser-support-result');
+      let html = '<div class="result">';
+
+      // Check MediaRecorder
+      if (typeof MediaRecorder !== 'undefined') {
+        html += '<span class="success">✅ MediaRecorder API</span><br>';
+
+        // Check supported MIME types
+        const mimeTypes = ['audio/webm', 'audio/mp4', 'audio/ogg'];
+        html += '<div style="margin-left: 20px; margin-top: 5px;">';
+        mimeTypes.forEach(type => {
+          const supported = MediaRecorder.isTypeSupported(type);
+          html += `${supported ? '✅' : '❌'} ${type}<br>`;
+        });
+        html += '</div>';
+      } else {
+        html += '<span class="error">❌ MediaRecorder API</span><br>';
+      }
+
+      // Check Web Audio API
+      if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
+        html += '<span class="success">✅ Web Audio API</span><br>';
+      } else {
+        html += '<span class="error">❌ Web Audio API</span><br>';
+      }
+
+      // Check getUserMedia
+      if (navigator.mediaDevices?.getUserMedia) {
+        html += '<span class="success">✅ getUserMedia</span><br>';
+      } else {
+        html += '<span class="error">❌ getUserMedia</span><br>';
+      }
+
+      // Check Geolocation
+      if (navigator.geolocation) {
+        html += '<span class="success">✅ Geolocation API</span><br>';
+      } else {
+        html += '<span class="error">❌ Geolocation API</span><br>';
+      }
+
+      html += '</div>';
+      resultDiv.innerHTML = html;
+    };
+
+    window.testEnvironmentalContext = async function() {
+      const resultDiv = document.getElementById('env-context-result');
+      resultDiv.innerHTML = '<div class="result">Récupération du contexte...</div>';
+
+      try {
+        // Try to get position
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(async (position) => {
+            const { latitude, longitude } = position.coords;
+
+            const context = await collectEnvironmentalContext(latitude, longitude, false);
+            const formatted = formatContextForPrompt(context);
+            const suggested = suggestSoundType(context);
+
+            let html = '<div class="result success">';
+            html += '<strong>📍 Position:</strong><br>';
+            html += `Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}<br><br>`;
+            html += '<strong>🌍 Contexte:</strong><br>';
+            html += formatted.replace(/\n/g, '<br>');
+            html += '<br><br><strong>💡 Type suggéré:</strong> ';
+            html += `<span class="badge">${suggested}</span>`;
+            html += '</div>';
+
+            resultDiv.innerHTML = html;
+          }, (error) => {
+            // Fallback: use context without GPS
+            const context = {
+              timeOfDay: getTimeOfDay(),
+              season: getSeason(),
+              region: { label: "Position non disponible" }
+            };
+
+            let html = '<div class="result warning">';
+            html += '<strong>⚠️ GPS non disponible</strong><br><br>';
+            html += `Heure: ${context.timeOfDay.label}<br>`;
+            html += `Saison: ${context.season.label}<br>`;
+            html += '</div>';
+
+            resultDiv.innerHTML = html;
+          });
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">Erreur: ${error.message}</div>`;
+      }
+    };
+
+    window.startRecording = async function() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // Setup MediaRecorder
+        const mimeType = ['audio/webm', 'audio/mp4', 'audio/ogg']
+          .find(type => MediaRecorder.isTypeSupported(type)) || '';
+
+        mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+          recordedBlob = blob;
+          document.getElementById('recording-info').innerHTML =
+            `<span class="success">✅ Audio enregistré (${(blob.size / 1024).toFixed(1)} KB, ${mediaRecorder.mimeType})</span>`;
+
+          stream.getTracks().forEach(track => track.stop());
+          cancelAnimationFrame(animationFrame);
+        };
+
+        // Setup visualization
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        source.connect(analyser);
+
+        // Start recording
+        mediaRecorder.start();
+        visualize();
+
+        document.getElementById('recording-info').innerHTML =
+          '<span class="warning">🎤 Enregistrement en cours...</span>';
+
+      } catch (error) {
+        document.getElementById('recording-info').innerHTML =
+          `<span class="error">❌ Erreur: ${error.message}</span>`;
+      }
+    };
+
+    window.stopRecording = function() {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+    };
+
+    function visualize() {
+      if (!analyser) return;
+
+      const canvas = document.getElementById('waveform');
+      const ctx = canvas.getContext('2d');
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      function draw() {
+        animationFrame = requestAnimationFrame(draw);
+
+        analyser.getByteTimeDomainData(dataArray);
+
+        ctx.fillStyle = '#0d1b16';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#3fa34d';
+        ctx.beginPath();
+
+        const sliceWidth = canvas.width / bufferLength;
+        let x = 0;
+
+        for (let i = 0; i < bufferLength; i++) {
+          const v = dataArray[i] / 128.0;
+          const y = (v * canvas.height) / 2;
+
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+
+          x += sliceWidth;
+        }
+
+        ctx.lineTo(canvas.width, canvas.height / 2);
+        ctx.stroke();
+      }
+
+      draw();
+    }
+
+    window.analyzeAudio = async function() {
+      const resultDiv = document.getElementById('fft-result');
+
+      if (!recordedBlob) {
+        resultDiv.innerHTML = '<div class="result error">❌ Aucun audio enregistré. Enregistrez d\'abord un son.</div>';
+        return;
+      }
+
+      resultDiv.innerHTML = '<div class="result">Analyse FFT en cours...</div>';
+
+      try {
+        const analysis = await processAudioBlob(recordedBlob, 'bird');
+        const formatted = formatAnalysisForPrompt(analysis);
+
+        let html = '<div class="result success">';
+        html += '<strong>🎼 Analyse Fréquentielle:</strong><br><br>';
+        html += `<strong>Fréquences dominantes:</strong><br>${formatted.frequencies}<br><br>`;
+        html += `<strong>Pattern temporel:</strong><br>${formatted.pattern}<br><br>`;
+        html += `<strong>Rythme:</strong> ${formatted.rhythm}<br>`;
+        html += `<strong>Qualité:</strong> ${formatted.quality}<br>`;
+        html += `<strong>Intensité:</strong> ${formatted.signalStrength}<br>`;
+        html += `<strong>Filtre appliqué:</strong> ${formatted.filterApplied}<br><br>`;
+
+        // Show full analysis object
+        html += '<details>';
+        html += '<summary style="cursor: pointer; color: #3fa34d;">Voir données brutes</summary>';
+        html += '<pre style="font-size: 10px; margin-top: 10px;">';
+        html += JSON.stringify(analysis, null, 2);
+        html += '</pre>';
+        html += '</details>';
+
+        html += '</div>';
+
+        resultDiv.innerHTML = html;
+
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">❌ Erreur d'analyse: ${error.message}</div>`;
+      }
+    };
+
+    window.testFullPipeline = function() {
+      const resultDiv = document.getElementById('pipeline-result');
+      resultDiv.innerHTML = '<div class="result warning">⚠️ Test complet nécessite une authentification Supabase.<br><br>Pour tester le pipeline complet:<br>1. Ouvrir l\'app W1LD<br>2. Se connecter<br>3. Utiliser la fonctionnalité "Écoute du vivant"<br><br>Cette page de test valide uniquement les composants locaux (FFT, contexte).</div>';
+    };
+
+    // Auto-test on load
+    window.addEventListener('load', () => {
+      testBrowserSupport();
+    });
+  </script>
+</body>
+</html>

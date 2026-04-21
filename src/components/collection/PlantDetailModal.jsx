@@ -1,10 +1,13 @@
 import { createPortal } from "react-dom";
-import { X, MapPin, Calendar, Utensils, AlertTriangle, Lock, Target, Share2 } from "lucide-react";
+import { X, MapPin, Calendar, Utensils, AlertTriangle, Target, Share2, Lock } from "lucide-react";
 import DiscoveryShareCard from "@/components/identify/DiscoveryShareCard";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { modalSlideUp } from "@/motion/variants";
-import { SPRING } from "@/motion/constants";
+import { usePremium } from "@/lib/PremiumContext";
+import { PREMIUM_PLAN_NAME } from "@/lib/premiumConfig";
+import { createPageUrl } from "@/utils";
 
 function InfoBlock({ label, children }) {
   return (
@@ -15,8 +18,86 @@ function InfoBlock({ label, children }) {
   );
 }
 
-export default function PlantDetailModal({ plant, isPro, onClose, onLearnMore }) {
+const SAFETY_RISK_CATEGORIES = new Set(["plant", "tree", "fungus", "insect", "arachnid"]);
+const BITE_STING_CATEGORIES = new Set(["insect", "arachnid"]);
+
+function normalizeSafetyStatus(plant = {}) {
+  const raw = String(plant.edibility_status || "").trim().toLowerCase();
+  if (raw === "toxic" || plant.is_toxic) return "toxic";
+  if (raw === "edible" || (plant.is_edible && !plant.is_toxic)) return "edible";
+  if (raw === "non_edible") return "non_edible";
+  return "unknown";
+}
+
+function getSafetyDisplay(plant) {
+  const status = normalizeSafetyStatus(plant);
+  const category = plant?.category || "plant";
+  const isRiskCategory = SAFETY_RISK_CATEGORIES.has(category);
+  const isBiteOrStingRisk = BITE_STING_CATEGORIES.has(category);
+  const displayStatus = isBiteOrStingRisk && status === "non_edible" ? "unknown" : status;
+  const shouldShow = isRiskCategory || status === "toxic" || status === "edible" || status === "non_edible";
+  if (!shouldShow) return null;
+
+  const config = {
+    edible: {
+      label: "Comestible",
+      Icon: Utensils,
+      color: "var(--v1v-green)",
+      background: "rgba(57,184,20,0.10)",
+      border: "rgba(57,184,20,0.30)",
+    },
+    toxic: {
+      label: category === "arachnid" ? "Venimeux - prudence" : category === "insect" ? "Risque de piqûre" : "Toxique",
+      Icon: AlertTriangle,
+      color: "#FF6B6B",
+      background: "rgba(220,50,50,0.10)",
+      border: "rgba(220,50,50,0.36)",
+    },
+    non_edible: {
+      label: "Non comestible",
+      Icon: AlertTriangle,
+      color: "rgba(237,240,230,0.72)",
+      background: "rgba(237,240,230,0.06)",
+      border: "rgba(237,240,230,0.14)",
+    },
+    unknown: {
+      label: isBiteOrStingRisk ? "Risque non vérifié" : "Non vérifié",
+      Icon: AlertTriangle,
+      color: "rgba(237,240,230,0.68)",
+      background: "rgba(237,240,230,0.05)",
+      border: "rgba(237,240,230,0.12)",
+    },
+  };
+
+  const fallbackNotes = {
+    arachnid: status === "toxic"
+      ? "Ne manipule pas l'animal. En cas de morsure douloureuse, nettoie, applique du froid enveloppé et appelle le 15/112 ou un centre antipoison si douleur intense, malaise, crampes ou enfant."
+      : "Observe sans manipuler. En cas de morsure douloureuse, nettoie, applique du froid enveloppé et demande un avis médical si douleur, gonflement ou malaise.",
+    insect: status === "toxic"
+      ? "Risque de piqûre ou d'irritation. Nettoie, applique du froid et appelle le 15/112 si gêne respiratoire, malaise, allergie connue ou gonflement du visage."
+      : "Observe sans manipuler si l'espèce pique, mord ou irrite. En cas de réaction forte, demande un avis médical.",
+    fungus: "Information indicative: ne jamais consommer un champignon sans vérification experte locale.",
+    plant: "Information indicative: ne pas consommer ou manipuler sans vérification experte.",
+    tree: "Information indicative: ne pas consommer ou manipuler sans vérification experte.",
+  };
+  const rawNote = String(plant?.safety_notes || "").trim();
+  const note = isBiteOrStingRisk && /\b(consommer|comestible|edible)\b/i.test(rawNote)
+    ? fallbackNotes[category]
+    : rawNote || fallbackNotes[category] || "Information indicative — ne pas consommer sans vérification experte.";
+
+  return {
+    status: displayStatus,
+    ...config[displayStatus],
+    note,
+    caution: isRiskCategory || status === "edible" || status === "toxic",
+    scopeLabel: isBiteOrStingRisk ? "Prudence terrain" : "Usage biologique",
+  };
+}
+
+export default function PlantDetailModal({ plant, isPro, onClose }) {
   const [showShare, setShowShare] = useState(false);
+  const navigate = useNavigate();
+  const { isAvailable: premiumAvailable } = usePremium();
 
   useEffect(() => {
     if (!plant) return;
@@ -25,6 +106,11 @@ export default function PlantDetailModal({ plant, isPro, onClose, onLearnMore })
   }, [plant]);
 
   if (!plant) return null;
+
+  const handleOpenPremium = () => {
+    onClose?.();
+    navigate(createPageUrl("Pricing"));
+  };
 
   const rarityStyles = {
     commune: { dot: "#2EA80F", bg: "rgba(46,168,15,0.05)", scopeColor: "#2EA80F" },
@@ -35,6 +121,7 @@ export default function PlantDetailModal({ plant, isPro, onClose, onLearnMore })
   const rarityLabels = { commune: "Commune", peu_commune: "Peu Commune", rare: "Rare", legendaire: "Légendaire" };
   const rs = rarityStyles[plant.rarity] || rarityStyles.commune;
   const lbl = rarityLabels[plant.rarity] || "Commune";
+  const safetyDisplay = getSafetyDisplay(plant);
 
   return createPortal(
     <AnimatePresence mode="wait">
@@ -135,24 +222,31 @@ export default function PlantDetailModal({ plant, isPro, onClose, onLearnMore })
             )}
           </div>
 
-          {/* Status badges */}
-          {(plant.is_edible || plant.is_toxic) && (
-            <div className="flex gap-2 flex-wrap">
-              {plant.is_edible && (
-                <span
-                  className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-3 py-1.5"
-                  style={{ background: "rgba(57,184,20,0.1)", border: "1px solid rgba(57,184,20,0.3)", borderRadius: 8, color: "var(--v1v-green)" }}
-                >
-                  <Utensils className="w-3 h-3" /> Comestible
+          {/* Safety state */}
+          {safetyDisplay && (
+            <div
+              className="p-4"
+              style={{
+                background: safetyDisplay.background,
+                border: `1px solid ${safetyDisplay.border}`,
+                borderRadius: 14,
+              }}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <safetyDisplay.Icon className="w-4 h-4" style={{ color: safetyDisplay.color }} />
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em]" style={{ color: safetyDisplay.color }}>
+                    {safetyDisplay.label}
+                  </p>
+                </div>
+                <span className="text-[8px] font-black uppercase tracking-[0.2em]" style={{ color: "var(--v1v-fg-faint)" }}>
+                  {safetyDisplay.scopeLabel}
                 </span>
-              )}
-              {plant.is_toxic && (
-                <span
-                  className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-3 py-1.5"
-                  style={{ background: "rgba(220,50,50,0.08)", border: "1px solid rgba(220,50,50,0.35)", borderRadius: 8, color: "#FF6B6B" }}
-                >
-                  <AlertTriangle className="w-3 h-3" /> Toxique
-                </span>
+              </div>
+              {safetyDisplay.caution && (
+                <p className="mt-3 text-[11px] leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>
+                  {safetyDisplay.note}
+                </p>
               )}
             </div>
           )}
@@ -225,18 +319,26 @@ export default function PlantDetailModal({ plant, isPro, onClose, onLearnMore })
               {plant.medicinal_uses    && <InfoBlock label="Usages médicinaux">{plant.medicinal_uses}</InfoBlock>}
               {plant.anecdote          && <InfoBlock label="Notes de terrain">{plant.anecdote}</InfoBlock>}
             </>
-          ) : (
-            <div
-              className="flex items-center gap-3 px-4 py-4"
-              style={{ background: "var(--v1v-green-bg-subtle)", border: "1px dashed var(--v1v-green-ghost)", borderRadius: 12 }}
-            >
-              <Lock className="w-4 h-4 flex-shrink-0" style={{ color: "var(--v1v-green-faint)" }} />
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: "var(--v1v-green-faint)" }}>Dossier Classifié</p>
-                <p className="text-[10px] leading-snug mt-0.5" style={{ color: "var(--v1v-fg-faint)" }}>Comestibilité, usages médicinaux & notes — accès Elite requis</p>
+          ) : ((plant.edibility_details || plant.medicinal_uses || plant.anecdote) ? (
+            <div style={{ background: "var(--v1v-green-bg-subtle)", border: "1px solid var(--v1v-green-ghost)", borderRadius: 12, padding: "16px" }}>
+              <div className="flex items-center gap-2 mb-2">
+                <Lock className="w-3.5 h-3.5" style={{ color: "var(--v1v-green-faint)" }} />
+                <p className="text-[9px] font-black tracking-[0.3em] uppercase" style={{ color: "var(--v1v-green-faint)" }}>{PREMIUM_PLAN_NAME}</p>
               </div>
+              <p className="text-[11px] leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>
+                Les notes détaillées, usages et repères avancés sont disponibles avec l'abonnement App Store.
+              </p>
+              {premiumAvailable && (
+                <button
+                  onClick={handleOpenPremium}
+                  className="mt-3 min-h-[44px] px-4 text-[9px] font-black uppercase tracking-[0.24em]"
+                  style={{ background: "var(--v1v-green)", color: "var(--v1v-bg)", borderRadius: 10 }}
+                >
+                  Découvrir {PREMIUM_PLAN_NAME}
+                </button>
+              )}
             </div>
-          )}
+          ) : null)}
 
           {/* Bouton Partager */}
           <button

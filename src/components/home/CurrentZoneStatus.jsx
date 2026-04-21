@@ -1,73 +1,92 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/api/supabaseClient";
-import { useZoneLabel } from "@/lib/locationMeta";
-import { computeUserZoneScores, getZoneId } from "@/lib/zones";
 import { Compass, MapPin, Sparkles } from "lucide-react";
+import { useCurrentZoneData } from "@/hooks/useCurrentZoneData";
 
-const G = "#2EA80F";
-const GOLD = "#C8960A";
+const G = "var(--v1v-green)";
+const GOLD = "var(--v1v-earth)";
+const BLUE = "var(--v1v-blue)";
 
-export default function CurrentZoneStatus({ userEmail, lat, lng, discoveries = [] }) {
-  const [leader, setLeader] = useState(null);
-  const [loading, setLoading] = useState(true);
+export default function CurrentZoneStatus({ userEmail, lat, lng, discoveries = [], zoneData = null }) {
+  const fallbackZoneData = useCurrentZoneData({
+    userEmail,
+    discoveries,
+    geoCoords: lat != null && lng != null ? { lat, lng } : null,
+    active: !zoneData,
+  });
+  const data = zoneData || fallbackZoneData;
+  const {
+    zoneId,
+    zoneName,
+    leader,
+    loading,
+    error,
+    localSpeciesCount: userSpecies,
+    isLeader,
+    noLeader,
+    zoneTarget: targetScore,
+    canDocumentNow: canContributeDecisively,
+    zoneProgress: progressPct,
+  } = data;
 
-  const zoneId = getZoneId(lat, lng);
-  const { label: zoneName } = useZoneLabel(zoneId);
-  const zoneScores = computeUserZoneScores(discoveries);
-  const userSpecies = zoneId ? (zoneScores[zoneId] || 0) : 0;
+  if (!zoneId) return null;
 
-  useEffect(() => {
-    const load = async () => {
-      if (!zoneId) {
-        setLoading(false);
-        return;
-      }
+  if (loading) {
+    return (
+      <div
+        className="v1v-surface-card-soft p-4 mt-2 text-xs"
+        style={{
+          background: "rgba(45,122,31,0.06)",
+          border: "1px solid rgba(45,122,31,0.16)",
+        }}
+      >
+        <p className="text-[8px] font-black uppercase tracking-[0.22em]" style={{ color: "rgba(57,184,20,0.45)" }}>
+          Lecture du repère local…
+        </p>
+      </div>
+    );
+  }
 
-      const { data } = await supabase
-        .from("zone_leaders")
-        .select("*")
-        .eq("zone_id", zoneId)
-        .order("species_count", { ascending: false })
-        .limit(1);
+  if (error && !leader) {
+    return (
+      <div
+        className="v1v-surface-card-soft p-4 mt-2 text-xs"
+        style={{
+          background: "rgba(21,101,192,0.08)",
+          border: "1px solid rgba(21,101,192,0.18)",
+        }}
+      >
+        <p className="text-[8px] font-black uppercase tracking-[0.22em]" style={{ color: BLUE }}>
+          Lecture locale en pause
+        </p>
+        <p className="mt-1 text-[11px] leading-relaxed" style={{ color: "var(--v1v-fg-muted)" }}>
+          Ton score local est prêt. Le statut de la zone revient dès que la connexion se stabilise.
+        </p>
+      </div>
+    );
+  }
 
-      setLeader(data?.[0] || null);
-      setLoading(false);
-    };
-
-    load();
-  }, [zoneId]);
-
-  if (loading || !zoneId) return null;
-
-  const isLeader = leader?.user_email === userEmail;
-  const noLeader = !leader;
   const gap = leader ? Math.max(1, leader.species_count + 1 - userSpecies) : 1;
-  const canTakeCrown = !isLeader && !noLeader && userSpecies >= (leader.species_count + 1);
-  const targetScore = noLeader ? 1 : leader.species_count + 1;
-  const progressPct = Math.min(100, (userSpecies / targetScore) * 100);
-  const tone = isLeader ? GOLD : canTakeCrown ? G : noLeader ? "#53C1FF" : G;
+  const tone = isLeader ? GOLD : canContributeDecisively ? G : noLeader ? BLUE : G;
   const statusTitle = isLeader
-    ? "Referent local"
-    : canTakeCrown
-      ? "Observation cle"
+    ? "Référent local"
+    : canContributeDecisively
+      ? "Contribution clé"
       : noLeader
-        ? "Zone a initier"
-        : "Observation en cours";
+        ? "Zone à ouvrir"
+        : "Contribution en cours";
   const mission = isLeader
-    ? "Ajoute une espece locale pour consolider la documentation de cette zone."
-    : canTakeCrown
-      ? "Tu as deja le score. Ouvre la carte et enregistre une observation cle ici."
+    ? "Ajoute une espèce locale pour consolider la qualité documentaire de cette zone."
+    : canContributeDecisively
+      ? "Tu as déjà ce qu'il faut. Ouvre la carte et enregistre une observation utile ici."
       : noLeader
-        ? "Une seule espece unique ici suffit pour lancer la documentation locale."
-        : `Encore ${gap} especes uniques pour devenir le referent devant ${leader.display_name}.`;
+        ? "Une seule espèce unique ici suffit pour ouvrir la documentation locale."
+        : `Encore ${gap} espèce${gap > 1 ? "s" : ""} unique${gap > 1 ? "s" : ""} pour rejoindre la référence devant ${leader.display_name}.`;
 
   return (
-    <div
-      className="p-3 mt-2 text-xs"
+      <div
+      className="v1v-surface-card p-4 mt-2 text-xs"
       style={{
-        background: isLeader ? "rgba(200,150,10,0.06)" : noLeader ? "rgba(83,193,255,0.08)" : "rgba(46,168,15,0.08)",
-        border: `1px solid ${isLeader ? "rgba(200,150,10,0.25)" : noLeader ? "rgba(83,193,255,0.22)" : "rgba(46,168,15,0.15)"}`,
-        borderRadius: "6px",
+        background: isLeader ? "var(--v1v-earth-bg)" : noLeader ? "var(--v1v-blue-bg)" : "var(--v1v-green-bg)",
+        border: `1px solid ${isLeader ? "var(--v1v-earth-border)" : noLeader ? "var(--v1v-blue-border)" : "var(--v1v-green-ghost)"}`,
       }}
     >
       <div className="flex items-start justify-between gap-3 mb-2">
@@ -104,10 +123,10 @@ export default function CurrentZoneStatus({ userEmail, lat, lng, discoveries = [
       <div className="grid grid-cols-2 gap-2 mt-2" style={{ color: "rgba(226,234,224,0.72)" }}>
         <div>
           <p className="text-[7px] font-black uppercase tracking-[0.22em]" style={{ color: "rgba(226,234,224,0.4)" }}>
-            Referent
+            Référence
           </p>
           <p className="text-[10px] font-black uppercase tracking-[0.08em]" style={{ color: tone }}>
-            {noLeader ? "A initier" : leader.display_name}
+            {noLeader ? "À ouvrir" : leader.display_name}
           </p>
         </div>
         <div className="text-right">
@@ -115,7 +134,7 @@ export default function CurrentZoneStatus({ userEmail, lat, lng, discoveries = [
             Dynamique
           </p>
           <p className="text-[10px] font-black uppercase tracking-[0.08em]" style={{ color: tone }}>
-            {isLeader ? "Stable" : canTakeCrown ? "Pret" : noLeader ? "Ouverte" : `-${gap}`}
+            {isLeader ? "Stable" : canContributeDecisively ? "Prête" : noLeader ? "Ouverte" : `-${gap}`}
           </p>
         </div>
       </div>

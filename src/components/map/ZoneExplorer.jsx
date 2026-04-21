@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Sparkles, Users, Database, MapPin, Plus, Minus, Filter } from 'lucide-react';
+import { X, Sparkles, Users, Database, MapPin, Plus, Minus, Filter, Leaf } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { getTaxonPhotos, searchTaxon } from '@/api/inaturalist';
 import { useZoneLabel } from '@/lib/locationMeta';
@@ -535,6 +535,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
       className="fixed inset-0 z-[9999] flex flex-col"
       style={{
         background: 'linear-gradient(180deg, #111711 0%, #0d110d 45%, #0a0d0a 100%)',
+        overflow: 'hidden',
       }}
     >
       {/* Header */}
@@ -574,7 +575,7 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
           </button>
         </div>
 
-        {/* Stats bar - CLIQUABLES */}
+        {/* Onglets terrain */}
         {!loading && (
           <div className="grid grid-cols-3 gap-2">
             <button
@@ -586,16 +587,16 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
               style={{
                 background: showListPanel === 'reference' ? 'rgba(45,122,31,0.2)' : 'rgba(45,122,31,0.1)',
                 border: `2px solid ${showListPanel === 'reference' ? 'rgba(45,122,31,0.5)' : 'rgba(45,122,31,0.3)'}`,
-                borderRadius: '8px',
-                padding: '8px',
+                borderRadius: '14px',
+                padding: '10px',
               }}
             >
-              <Database className="w-3 h-3 mb-1" style={{ color: 'var(--v1v-green)' }} />
-              <div className="text-lg font-black" style={{ color: 'var(--v1v-green)' }}>
+              <Leaf className="w-3.5 h-3.5 mb-1.5" style={{ color: 'var(--v1v-green)' }} />
+              <div className="text-lg font-black leading-none" style={{ color: 'var(--v1v-green)' }}>
                 {displayStats.ref}
               </div>
-              <div className="text-[8px] uppercase tracking-wider" style={{ color: 'rgba(45,122,31,0.6)' }}>
-                Référence
+              <div className="mt-1 text-[7px] uppercase leading-tight tracking-[0.12em]" style={{ color: 'rgba(174,255,188,0.72)' }}>
+                Espèces à découvrir
               </div>
             </button>
 
@@ -608,16 +609,16 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
               style={{
                 background: showListPanel === 'discoveries' ? 'rgba(111,143,161,0.18)' : 'rgba(111,143,161,0.08)',
                 border: `2px solid ${showListPanel === 'discoveries' ? 'rgba(111,143,161,0.42)' : 'rgba(111,143,161,0.24)'}`,
-                borderRadius: '8px',
-                padding: '8px',
+                borderRadius: '14px',
+                padding: '10px',
               }}
             >
-              <Sparkles className="w-3 h-3 mb-1" style={{ color: 'var(--v1v-blue)' }} />
-              <div className="text-lg font-black" style={{ color: 'var(--v1v-blue)' }}>
+              <Sparkles className="w-3.5 h-3.5 mb-1.5" style={{ color: 'var(--v1v-blue)' }} />
+              <div className="text-lg font-black leading-none" style={{ color: 'var(--v1v-blue)' }}>
                 {displayStats.users}
               </div>
-              <div className="text-[8px] uppercase tracking-wider" style={{ color: 'var(--v1v-blue-muted)' }}>
-                {showOnlyMyDiscoveries ? 'Mes Scans' : 'Découvertes'}
+              <div className="mt-1 text-[7px] uppercase leading-tight tracking-[0.12em]" style={{ color: 'var(--v1v-blue-muted)' }}>
+                {showOnlyMyDiscoveries ? 'Mes observations' : 'Déjà observées'}
               </div>
             </button>
 
@@ -625,15 +626,15 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
               style={{
                 background: 'rgba(196,154,10,0.1)',
                 border: '1px solid rgba(196,154,10,0.3)',
-                borderRadius: '8px',
-                padding: '8px',
+                borderRadius: '14px',
+                padding: '10px',
               }}
             >
-              <Users className="w-3 h-3 mb-1" style={{ color: 'var(--v1v-amber)' }} />
-              <div className="text-lg font-black" style={{ color: 'var(--v1v-amber)' }}>
+              <Users className="w-3.5 h-3.5 mb-1.5" style={{ color: 'var(--v1v-amber)' }} />
+              <div className="text-lg font-black leading-none" style={{ color: 'var(--v1v-amber)' }}>
                 {displayStats.uniqueUsers}
               </div>
-              <div className="text-[8px] uppercase tracking-wider" style={{ color: 'rgba(181,138,82,0.66)' }}>
+              <div className="mt-1 text-[7px] uppercase leading-tight tracking-[0.12em]" style={{ color: 'rgba(181,138,82,0.66)' }}>
                 Explorateurs
               </div>
             </div>
@@ -780,9 +781,9 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
               <div className="flex items-center gap-2">
                 {showListPanel === 'reference' ? (
                   <>
-                    <Database className="w-4 h-4" style={{ color: 'var(--v1v-green)' }} />
+                    <Leaf className="w-4 h-4" style={{ color: 'var(--v1v-green)' }} />
                     <span className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: 'var(--v1v-green)' }}>
-                      Références à proximité
+                      Espèces que tu pourrais trouver ici
                     </span>
                   </>
                 ) : (
@@ -806,7 +807,14 @@ export default function ZoneExplorer({ zone, onClose, userEmail }) {
             </div>
 
             {/* Liste scrollable */}
-            <div className="overflow-y-auto p-2" style={{ maxHeight: 'calc(50vh - 60px)' }}>
+            <div
+              className="overflow-y-auto p-2"
+              style={{
+                maxHeight: 'calc(50vh - 60px)',
+                overscrollBehavior: 'contain',
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
               {showListPanel === 'reference' ? (
                 sortedReferenceSpecies.length > 0 ? (
                   <div className="space-y-2">

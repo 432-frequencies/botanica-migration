@@ -11,7 +11,10 @@ import { ScrollProvider } from '@/lib/ScrollContext';
 import { NavHistoryProvider } from '@/lib/NavHistory';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { syncOfflineQueue } from './utils/syncQueue';
-import { getPageAlias, isPublicPath } from '@/lib/app-config';
+import { getPageAlias, isFeatureEnabled, isPublicPath } from '@/lib/app-config';
+import { useAdminStatus } from '@/hooks/useAdminStatus';
+import { PremiumProvider } from '@/lib/PremiumContext';
+import { LanguageProvider } from '@/lib/i18n';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -23,6 +26,9 @@ const AdminSecurity = lazy(() => import('./pages/AdminSecurity'));
 const Login = lazy(() => import('./pages/Login'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Support = lazy(() => import('./pages/Support'));
+const adminImportEnabled = isFeatureEnabled("adminImport");
+const knowledgeMapEnabled = isFeatureEnabled("knowledgeMap");
+const pricingEnabled = isFeatureEnabled("pricing");
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
@@ -46,6 +52,24 @@ const renderPageElement = (pageName, Page) => (
   </LayoutWrapper>
 );
 
+const AdminRoute = ({ pageName, Page }) => {
+  const { checking, authenticated, isAdmin } = useAdminStatus();
+
+  if (checking) {
+    return <AppScreenFallback />;
+  }
+
+  if (!authenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  return renderPageElement(pageName, Page);
+};
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin } = useAuth();
   const { pathname } = useLocation();
@@ -53,10 +77,32 @@ const AuthenticatedApp = () => {
 
   // Sync offline queue au montage global (après auth)
   useEffect(() => {
-    if (!isLoadingAuth && !authError && navigator.onLine) {
-      syncOfflineQueue().catch(() => {});
-    }
-  }, [isLoadingAuth, authError]);
+    if (isLoadingAuth || authError || !isAuthenticated) return undefined;
+
+    const handleSync = () => {
+      if (navigator.onLine) {
+        syncOfflineQueue().catch(() => {});
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        handleSync();
+      }
+    };
+
+    handleSync();
+    window.addEventListener('online', handleSync);
+    window.addEventListener('focus', handleSync);
+    window.addEventListener('pageshow', handleSync);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('online', handleSync);
+      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('pageshow', handleSync);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isLoadingAuth, authError, isAuthenticated]);
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
@@ -107,14 +153,35 @@ const AuthenticatedApp = () => {
       })}
       <Route path="/Badges" element={renderPageElement("Badges", Badges)} />
       <Route path="/badges" element={renderPageElement("Badges", Badges)} />
-      <Route path="/AdminAffiliates" element={renderPageElement("AdminAffiliates", AdminAffiliates)} />
-      <Route path="/admin-affiliates" element={renderPageElement("AdminAffiliates", AdminAffiliates)} />
-      <Route path="/AdminMap" element={renderPageElement("AdminMap", AdminMap)} />
-      <Route path="/admin-map" element={renderPageElement("AdminMap", AdminMap)} />
-      <Route path="/AdminSecurity" element={renderPageElement("AdminSecurity", AdminSecurity)} />
-      <Route path="/admin-security" element={renderPageElement("AdminSecurity", AdminSecurity)} />
-      <Route path="/Pricing" element={<Navigate to="/support" replace />} />
-      <Route path="/pricing" element={<Navigate to="/support" replace />} />
+      <Route path="/AdminAffiliates" element={<AdminRoute pageName="AdminAffiliates" Page={AdminAffiliates} />} />
+      <Route path="/admin-affiliates" element={<AdminRoute pageName="AdminAffiliates" Page={AdminAffiliates} />} />
+      <Route path="/AdminMap" element={<AdminRoute pageName="AdminMap" Page={AdminMap} />} />
+      <Route path="/admin-map" element={<AdminRoute pageName="AdminMap" Page={AdminMap} />} />
+      <Route path="/AdminSecurity" element={<AdminRoute pageName="AdminSecurity" Page={AdminSecurity} />} />
+      <Route path="/admin-security" element={<AdminRoute pageName="AdminSecurity" Page={AdminSecurity} />} />
+      {adminImportEnabled ? (
+        <>
+          <Route path="/AdminImport" element={<AdminRoute pageName="AdminImport" Page={Pages.AdminImport} />} />
+          <Route path="/admin-import" element={<AdminRoute pageName="AdminImport" Page={Pages.AdminImport} />} />
+        </>
+      ) : (
+        <>
+          <Route path="/AdminImport" element={<Navigate to="/" replace />} />
+          <Route path="/admin-import" element={<Navigate to="/" replace />} />
+        </>
+      )}
+      {!knowledgeMapEnabled && (
+        <>
+          <Route path="/KnowledgeMap" element={<Navigate to="/" replace />} />
+          <Route path="/knowledge-map" element={<Navigate to="/" replace />} />
+        </>
+      )}
+      {!pricingEnabled && (
+        <>
+          <Route path="/Pricing" element={<Navigate to="/support" replace />} />
+          <Route path="/pricing" element={<Navigate to="/support" replace />} />
+        </>
+      )}
       <Route path="/NightSky" element={<Navigate to="/" replace />} />
       <Route path="/night-sky" element={<Navigate to="/" replace />} />
       <Route path="/AncientCalendar" element={<Navigate to="/" replace />} />
@@ -128,19 +195,23 @@ const AuthenticatedApp = () => {
 function App() {
 
   return (
-    <AuthProvider>
-      <ScrollProvider>
-        <QueryClientProvider client={queryClientInstance}>
-          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <NavHistoryProvider>
-            <NavigationTracker />
-            <AuthenticatedApp />
-          </NavHistoryProvider>
-          </Router>
-          <Toaster />
-        </QueryClientProvider>
-      </ScrollProvider>
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <PremiumProvider>
+          <ScrollProvider>
+            <QueryClientProvider client={queryClientInstance}>
+              <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                <NavHistoryProvider>
+                  <NavigationTracker />
+                  <AuthenticatedApp />
+                </NavHistoryProvider>
+              </Router>
+              <Toaster />
+            </QueryClientProvider>
+          </ScrollProvider>
+        </PremiumProvider>
+      </AuthProvider>
+    </LanguageProvider>
   )
 }
 
