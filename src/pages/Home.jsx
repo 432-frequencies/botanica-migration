@@ -26,6 +26,8 @@ import { translateLevelLabel, useTranslation } from "@/lib/i18n";
 import { syncOfflineQueue } from "@/utils/syncQueue";
 import { useCurrentZoneData } from "@/hooks/useCurrentZoneData";
 import { usePremium } from "@/lib/PremiumContext";
+import { canScan, getUserTier } from "@/lib/subscription-tiers";
+import PaywallModal from "@/components/subscription/PaywallModal";
 
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { hasError: false }; }
@@ -1045,6 +1047,8 @@ export default function Home() {
   const [nearbyActivity, setNearbyActivity] = useState(null);
   const [nearbySpots, setNearbySpots] = useState([]);
   const [nearbyWildPhotos, setNearbyWildPhotos] = useState([]);
+  const [dailyScansCount, setDailyScansCount] = useState(0);
+  const [showPaywall, setShowPaywall] = useState(false);
   const geoRef = useRef(null);
   const capturedImageRef = useRef(null);
   const scanPulseRef = useRef(0);
@@ -1387,6 +1391,9 @@ export default function Home() {
     await new Promise((resolve) => setTimeout(resolve, 760));
     setResult(res.data);
     setIdentifying(false);
+
+    // Increment daily scan count
+    setDailyScansCount(prev => prev + 1);
   };
 
   const handleAudioCapture = async (audioPayload) => {
@@ -1447,6 +1454,9 @@ export default function Home() {
       await new Promise((resolve) => setTimeout(resolve, 640));
       setResult(data);
       setIdentifying(false);
+
+      // Increment daily scan count
+      setDailyScansCount(prev => prev + 1);
     } catch (error) {
       clearTimeout(timeoutTimer);
       rollbackCounter();
@@ -1628,14 +1638,46 @@ export default function Home() {
   const speciesCount = getUniqueSpeciesCount(discoveries);
   const territoriesFromScores = Object.values(currentZoneData?.zoneScores || {}).filter((count) => count > 0).length;
   const territoriesCount = Math.max(currentZoneData?.ownedZonesCount || 0, territoriesFromScores);
+
   const openScanner = () => {
+    // Check daily scan limit before opening
+    const scanCheck = canScan(userData, dailyScansCount);
+
+    if (!scanCheck.allowed) {
+      feedback('error', { haptic: true, sound: false });
+      setShowPaywall(true);
+      return;
+    }
+
     feedback('scan', { haptic: true, sound: false });
     setShowCamera(true);
   };
 
   const openAudioScanner = () => {
+    // Check daily scan limit before opening
+    const scanCheck = canScan(userData, dailyScansCount);
+
+    if (!scanCheck.allowed) {
+      feedback('error', { haptic: true, sound: false });
+      setShowPaywall(true);
+      return;
+    }
+
     feedback('scan', { haptic: true, sound: false });
     setShowAudioCapture(true);
+  };
+
+  const handleSelectTier = (tier) => {
+    // Close paywall
+    setShowPaywall(false);
+
+    // Redirect to pricing page with pre-selected tier
+    // TODO: Implement Stripe checkout or redirect to /pricing
+    console.log('Selected tier:', tier);
+    setToast(`${tier.name} sélectionné - Paiement bientôt disponible`);
+
+    // For now, just show a toast
+    // Later: window.location.href = `/pricing?tier=${tier.id}`;
   };
 
   const handleQueueSync = async () => {
@@ -1749,6 +1791,16 @@ export default function Home() {
             onClose={() => setLevelUpData(null)}
           />
         </Suspense>
+      )}
+
+      {/* Paywall Modal */}
+      {showPaywall && (
+        <PaywallModal
+          isOpen={showPaywall}
+          onClose={() => setShowPaywall(false)}
+          remainingScans={canScan(userData, dailyScansCount).remaining}
+          onSelectTier={handleSelectTier}
+        />
       )}
 
       {showCamera && (

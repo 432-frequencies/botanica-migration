@@ -1586,11 +1586,26 @@ export default async function handler(req, res) {
   // Use corrected category from normalization if available
   const finalCategory = result.correctedCategory || category;
 
-  // Increment daily counter
+  // Increment daily scan counter with auto-reset
+  const dailyScansResetAt = new Date(profile.daily_scans_reset_at || new Date());
+  const hoursSinceReset = (new Date() - dailyScansResetAt) / (1000 * 60 * 60);
+
+  const newDailyCount = hoursSinceReset >= 24 ? 1 : (profile.daily_scans_count || 0) + 1;
+  const newResetAt = hoursSinceReset >= 24 ? new Date().toISOString() : profile.daily_scans_reset_at;
+
+  await supabase
+    .from('profiles')
+    .update({
+      daily_scans_count: newDailyCount,
+      daily_scans_reset_at: newResetAt
+    })
+    .eq('id', user.id);
+
+  // Legacy: also update old counter for backward compatibility
   await supabase
     .from('user_profiles')
     .update({ daily_identifications_count: (profile.daily_identifications_count || 0) + 1 })
     .eq('user_email', user.email);
 
-  return res.json({ ...result, category: finalCategory });
+  return res.json({ ...result, category: finalCategory, daily_scans_count: newDailyCount });
 }

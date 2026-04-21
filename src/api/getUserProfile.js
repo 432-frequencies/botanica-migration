@@ -204,8 +204,31 @@ export async function getUserProfile(options = {}) {
     ? await fetchDiscoveriesByEmail(userEmail, { forceFresh })
     : [];
 
+  // Fetch subscription data from profiles table (new schema)
+  let subscriptionData = null;
+  try {
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('subscription_tier, subscription_status, daily_scans_count, daily_scans_reset_at')
+      .eq('id', authUser.id)
+      .maybeSingle();
+
+    subscriptionData = profileData;
+  } catch (err) {
+    console.warn('[getUserProfile] Failed to fetch subscription data:', err);
+  }
+
+  // Merge subscription data into profile
+  const enrichedProfile = {
+    ...profile,
+    subscription_tier: subscriptionData?.subscription_tier || 'free',
+    subscription_status: subscriptionData?.subscription_status || 'active',
+    daily_scans_count: subscriptionData?.daily_scans_count || 0,
+    daily_scans_reset_at: subscriptionData?.daily_scans_reset_at || new Date().toISOString()
+  };
+
   return {
-    profile,
+    profile: enrichedProfile,
     user: {
       email: authUser.email,
       full_name: resolveDisplayName({
