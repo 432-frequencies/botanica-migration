@@ -3,6 +3,7 @@ import { getDailyScanLimit, hasLaunchAccess } from '../src/lib/app-config.js';
 import { resolveDisplayName } from '../src/lib/displayName.js';
 import { inferCategoryFromText, normalizeSpeciesCategory } from '../src/lib/species.js';
 import { refreshPremiumStatusForUser } from './_premium.js';
+import { callClaude } from './_claude.js';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -299,20 +300,34 @@ async function detectCategory(b64, mediaType) {
 // ─── identification prompts (Claude pour toutes les catégories) ───────────────
 
 const PROMPTS = {
-  plant: `Identifie cette plante avec précision. Réponds en JSON structuré.
-- is_edible: true uniquement si la comestibilité est fiable et couramment admise
-- is_toxic: true si une toxicité, irritation ou danger de consommation est connu ou probable
-- edibility_status: edible/toxic/non_edible/unknown
-- safety_notes: courte prudence si comestibilité ou toxicité non vérifiée
-- description: 1-2 phrases courtes (max 200 caractères)
-- edibility_details: si comestible/toxique, sinon vide
-- medicinal_uses: si pertinent, sinon vide
-- anecdote: 1 fait intéressant court (max 150 caractères)
-- habitat: où pousse-t-elle (max 100 caractères)
-- ecological_role: rôle dans l'écosystème (pollinisation, fixation azote, abri faune, etc.) max 200 caractères
-- biodiversity_importance: pourquoi cette espèce est importante pour la biodiversité (chaîne alimentaire, indicateur santé écosystème, etc.) max 200 caractères
-- rarity: commune/peu_commune/rare/legendaire. Ne mets "commune" que si l'espèce est très banale; utilise "peu_commune" pour une identification précise, distinctive ou moins souvent observée.
-Si ce n'est pas une plante, réponds {"found":false,"common_name":"Pas une plante","description":"Décris brièvement ce que tu vois"}`,
+  plant: `Identifie cette plante. JSON UNIQUEMENT, AUCUN MARKDOWN.
+
+STRUCTURE EXACTE REQUISE (NE PAS TRONQUER):
+{
+  "found": true,
+  "common_name": "Nom commun précis",
+  "scientific_name": "Nom latin",
+  "family": "Famille",
+  "confidence": 75,
+  "is_edible": false,
+  "is_toxic": false,
+  "edibility_status": "unknown",
+  "safety_notes": "Texte complet sans ... (max 100 char)",
+  "description": "Phrase complète descriptive (max 180 char)",
+  "habitat": "Habitat naturel précis et complet (ex: forêts humides de feuillus, 300-1500m alt) max 120 char",
+  "fun_fact": "Fait concret et intéressant sans ... (max 140 char)",
+  "edibility_details": "",
+  "medicinal_uses": "",
+  "ecological_role": "Phrase complète sur le rôle (max 180 char)",
+  "biodiversity_importance": "Phrase complète sur l'importance (max 180 char)",
+  "rarity": "peu_commune"
+}
+
+RÈGLES CRITIQUES:
+- TOUTES les phrases doivent être COMPLÈTES, PAS de "..." à la fin
+- habitat: SPÉCIFIQUE (région, altitude, type de sol) pas générique
+- fun_fact: CONCRET et UNIQUE à cette espèce
+- Si pas plante: {"found":false,"common_name":"Pas une plante","description":"..."}`,
 
   tree: `Identifie cet arbre ou arbuste avec précision. Réponds en JSON structuré.
 - is_edible: true uniquement si les fruits/parties visibles sont comestibles de façon fiable
@@ -329,19 +344,34 @@ Si ce n'est pas une plante, réponds {"found":false,"common_name":"Pas une plant
 - rarity: commune/peu_commune/rare/legendaire. Ne mets "commune" que si l'espèce est très banale; utilise "peu_commune" pour une identification précise, distinctive ou moins souvent observée.
 Si ce n'est pas un arbre, réponds {"found":false,"common_name":"Pas un arbre","description":"Décris brièvement ce que tu vois"}`,
 
-  fungus: `Identifie ce champignon avec précision. IMPORTANT: toujours préciser si comestible ou toxique.
-- is_edible: true uniquement si l'identification est très fiable et l'espèce couramment reconnue comestible
-- is_toxic: true si toxicité connue/probable, confusion dangereuse possible, ou doute sérieux
-- edibility_status: edible/toxic/non_edible/unknown
-- safety_notes: toujours rappeler de ne pas consommer sans vérification experte
-- description: 1-2 phrases courtes (max 200 caractères)
-- edibility_details: OBLIGATOIRE - comestible, toxique, mortel, ou non comestible
-- anecdote: 1 fait intéressant court (max 150 caractères)
-- habitat: où pousse-t-il (max 100 caractères)
-- ecological_role: rôle dans l'écosystème (décomposition, symbiose mycorhizienne, etc.) max 200 caractères
-- biodiversity_importance: pourquoi ce champignon est important pour la biodiversité (recyclage nutriments, santé des arbres, etc.) max 200 caractères
-- rarity: commune/peu_commune/rare/legendaire. Ne mets "commune" que si l'espèce est très banale; utilise "peu_commune" pour une identification précise, distinctive ou moins souvent observée.
-Si ce n'est pas un champignon, réponds {"found":false,"common_name":"Pas un champignon","description":"Décris brièvement ce que tu vois"}`,
+  fungus: `Identifie ce champignon. JSON UNIQUEMENT. RESPONSABILITÉ CRITIQUE: TOXICITÉ.
+
+STRUCTURE EXACTE REQUISE (COMPLÉTER TOUTES LES PHRASES):
+{
+  "found": true,
+  "common_name": "Nom commun précis",
+  "scientific_name": "Nom latin",
+  "family": "Famille",
+  "confidence": 70,
+  "is_edible": false,
+  "is_toxic": true,
+  "edibility_status": "toxic",
+  "safety_notes": "NE JAMAIS CONSOMMER sans expert mycologue. Confusion mortelle possible avec [espèce]. (max 120 char)",
+  "description": "Description complète des caractéristiques (max 180 char)",
+  "habitat": "Habitat naturel détaillé (type de forêt, substrat, saison) max 120 char",
+  "fun_fact": "Fait concret unique et complet (max 140 char)",
+  "edibility_details": "OBLIGATOIRE: Toxique mortel / Toxique dangereux / Comestible excellent / Non comestible / Confusion possible avec [espèce mortelle] (max 140 char)",
+  "ecological_role": "Rôle écologique complet et précis (max 180 char)",
+  "biodiversity_importance": "Importance biodiversité complète (max 180 char)",
+  "rarity": "peu_commune"
+}
+
+RÈGLES ABSOLUES:
+- TOUJOURS remplir edibility_details avec détails toxicité/comestibilité
+- Si DOUTE sur identification: is_toxic=true + safety_notes STRICT
+- TOUTES phrases COMPLÈTES, JAMAIS de "..."
+- habitat: PRÉCIS (feuillus/résineux, substrat, mois)
+- Si pas champignon: {"found":false}`,
 
   bird: `Identifie cet oiseau avec précision. Réponds en JSON structuré.
 - description: 1-2 phrases courtes (max 200 caractères)
@@ -936,7 +966,7 @@ function normalizeGeminiResponse(data, category, outputLanguage = 'fr') {
   const rarity = normalizeRarity(data, correctedCategory);
   const safetyNotes = truncateSentences(safety.safety_notes, 2, 220);
   const medicinalUses = truncateSentences(data.medicinal_uses, 2, 180);
-  const anecdote = truncateSentences(data.anecdote, 1, 150);
+  const anecdote = truncateSentences(data.anecdote || data.fun_fact, 1, 150);
   const habitat = truncateSentences(data.habitat, 1, 120);
   const ecologicalRole = truncateSentences(data.ecological_role, 2, 200);
   const biodiversityImportance = truncateSentences(data.biodiversity_importance, 2, 200);
@@ -1487,7 +1517,16 @@ export default async function handler(req, res) {
     return handleSoundIdentification({ body, profile, supabase, user, res, outputLanguage });
   }
 
-  let universalData = await callGeminiUniversal(image.data, image.mediaType, outputLanguage);
+  // Try Claude first (premium quality), fallback to Gemini
+  let universalData;
+  try {
+    console.log('[identify-plant] Attempting Claude API...');
+    universalData = await callClaude(image.data, image.mediaType, 'plant', outputLanguage);
+  } catch (claudeError) {
+    console.log('[identify-plant] Claude failed, falling back to Gemini:', claudeError.message);
+    universalData = await callGeminiUniversal(image.data, image.mediaType, outputLanguage);
+  }
+
   let category = normalizeSpeciesCategory(universalData?.category, universalData || {});
   let data = universalData;
   let result = buildResult(data, category, profile, outputLanguage);
