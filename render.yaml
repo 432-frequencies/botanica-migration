@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: w1ld-birdnet-api
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerfilePath: ./services/birdnet-api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    buildFilter:
+      paths:
+        - services/**
+        - render.yaml
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: BIRDNET_HOST
+        value: "0.0.0.0"
+      - key: BIRDNET_PORT
+        value: "8080"
+      - key: BIRDNET_APP_DATA
+        value: /var/lib/birdnet
+      - key: BIRDNET_DEFAULT_LOCALE
+        value: fr
+      - key: BIRDNET_MODEL_VERSION
+        value: "2.4"
+      - key: BIRDNET_MAX_UPLOAD_MB
+        value: "25"
+      - key: BIRDNET_SERVER_TOKEN
+        sync: false
+    disk:
+      name: birdnet-data
+      mountPath: /var/lib/birdnet
+      sizeGB: 10
